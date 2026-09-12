@@ -13,17 +13,26 @@ CI 阶段给 Capacitor 生成的 Android 工程注入「与服务端统一」的
 
 产物：
   · mipmap-mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi/ic_launcher.png     —— 传统方形图标（向下兼容）
+  · mipmap-mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi/ic_launcher_round.png
   · mipmap-anydpi-v26/ic_launcher.xml                          —— 自适应图标描述
   · mipmap-anydpi-v26/ic_launcher_round.xml
-  · drawable/ic_launcher_foreground.png                        —— 自适应前景（图标本体，留安全边距）
+  · drawable-mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi/ic_launcher_foreground.png
+                                                              —— 自适应前景（图标本体，留安全边距）
   · values/ic_launcher_background.xml                          —— 自适应背景色
+
+⚠️ 前景图必须落在 **drawable-<dpi>/**（而不是 mipmap-<dpi>）：
+   adaptive-icon XML 里写的是 `android:drawable="@drawable/ic_launcher_foreground"`，
+   若把 PNG 放进 mipmap-*/，AAPT2 就找不到 drawable/ic_launcher_foreground，
+   自适应图标链接失败 → 启动器读不到图标 → 桌面**没有图标**（本脚本曾踩此坑）。
 
 用法：
   python3 tools/make-android-icons.py <图标源png> <android/app/src/main/res 目录>
 """
 
 import os
+import re
 import sys
+import glob
 
 from PIL import Image
 
@@ -141,11 +150,11 @@ def main():
         make_legacy(src_sq, size).save(p2, optimize=True)
         written.append(p2)
 
-    # 2) 自适应图标前景（唯一一份，放 drawable/；密度由系统按 dp 缩放）
-    #    实际 Android 要求按 dpi 分目录才能最清晰，这里按 dpi 分别生成到 mipmap-*/，
-    #    但 drawable 引用名必须唯一 —— 用 mipmap 目录更稳妥。
+    # 2) 自适应图标前景：必须写到 drawable-<dpi>/，与 XML 的 @drawable/ 引用对齐。
+    #    ⚠️ 不要写进 mipmap-<dpi>/ —— 那样 AAPT2 解析 @drawable/ic_launcher_foreground 会失败，
+    #    自适应图标链接不通过 → 桌面无图标。
     for dpi, size in ADAPTIVE_SIZES.items():
-        d = os.path.join(res_dir, "mipmap-" + dpi)
+        d = os.path.join(res_dir, "drawable-" + dpi)
         ensure(d)
         p = os.path.join(d, "ic_launcher_foreground.png")
         make_foreground(src_sq, size).save(p, optimize=True)
@@ -171,6 +180,39 @@ def main():
     print("--- 已写入 %d 个文件 ---" % len(written))
     for p in written:
         print("  %s  %d B" % (p, os.path.getsize(p)))
+
+    # 5) 自检：把 adaptive-icon XML 里引用的每个资源都在 res/ 下解析一遍，
+    #    任何一个解析不到就直接失败退出（否则 CI 会静默出「无图标」的包）。
+    errs = []
+    for xml_name in ("ic_launcher.xml", "ic_launcher_round.xml"):
+        xp = os.path.join(anydpi, xml_name)
+        if not os.path.isfile(xp):
+            errs.append("缺少 " + xml_name)
+            continue
+        with open(xp, encoding="utf-8") as f:
+            body = f.read()
+        for kind, name in re.findall(r"@(drawable|mipmap|color)/([A-Za-z0-9_]+)", body):
+            if kind == "color":
+                if not os.path.isfile(os.path.join(values, "ic_launcher_background.xml")):
+                    errs.append(xml_name + " 引用的 @color/" + name + " 无对应 values 资源")
+                continue
+            found = False
+            for dp in glob.glob(os.path.join(res_dir, kind + "*")):
+                for ext in (".png", ".webp", ".xml", ".jpg", ".jpeg"):
+                    if os.path.isfile(os.path.join(dp, name + ext)):
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
+                errs.append(xml_name + " 引用的 @" + kind + "/" + name + " 在 res/ 下找不到")
+    if errs:
+        print("!!! 资源引用自检失败：")
+        for e in errs:
+            print("    - " + e)
+        return 2
+
+    print("资源引用自检通过：@color/@drawable/@mipmap 全部可解析")
     return 0
 
 

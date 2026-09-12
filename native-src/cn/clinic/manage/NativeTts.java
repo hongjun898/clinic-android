@@ -51,8 +51,8 @@ public class NativeTts {
 
     /** ready 之前收到的播报请求（只保留最后一条，避免堆积） */
     private String pendingText = null;
-    private float pendingRate = 0.88f;
-    private float pendingPitch = 1.02f;
+    private float pendingRate = 0.78f;
+    private float pendingPitch = 1.0f;
     private String pendingLang = "zh-CN";
 
     /** 引擎不可用时的回调（交给网页提示用户去系统设置装语音数据） */
@@ -175,7 +175,7 @@ public class NativeTts {
         if (text == null || text.trim().isEmpty()) return;
         float r = (float) rate;
         float p = (float) pitch;
-        if (r <= 0) r = 0.88f;
+        if (r <= 0) r = 0.78f;
         if (p <= 0) p = 1.0f;
 
         /* 第 34 轮：同句去重。一次缴费提示若被触发两次（页面重渲染 / 多端回推），
@@ -215,6 +215,13 @@ public class NativeTts {
             }
 
             Bundle params = new Bundle();
+            /* 第 36 轮：显式把音量拉满。网页侧反馈「读『元』时声音太小」——
+               中文引擎对句末单音节量词会做轻读处理，若音频增益本就不高，听感就是"被吞掉"。
+               网页侧已通过「元整，」断句缓解；这里再从引擎侧把音量顶到 1.0 兜底。
+               KEY_PARAM_VOLUME 在 API 21+ 可用，老版本忽略即可。 */
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                try { params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f); } catch (Exception ignored) {}
+            }
             // 用 QUEUE_FLUSH：新播报直接打断旧的，符合「刷新缴费金额」的场景
             // （同句重复的情况已在 speak() 里被去重拦掉，不会误伤）
             int mode = TextToSpeech.QUEUE_FLUSH;

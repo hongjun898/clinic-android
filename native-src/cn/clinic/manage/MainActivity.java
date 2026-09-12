@@ -164,9 +164,11 @@ public class MainActivity extends BridgeActivity {
 
         @android.webkit.JavascriptInterface
         public void speak(String text, String rate, String pitch, String lang) {
-            /* 第 34 轮：默认值与网页侧 TTS_RATE/TTS_PITCH 保持一致（0.82 / 1.0）。
-               0.88 偏快、1.02 偏尖，是「不清晰」的听感来源之一。 */
-            double r = 0.82, p = 1.0;
+            /* 与网页侧 TTS_RATE/TTS_PITCH 保持一致（第 36 轮：0.78 / 1.0）。
+               0.88 偏快、1.02 偏尖，是「不清晰」的听感来源之一；
+               第 36 轮再降到 0.78，配合网页侧的数字→数词改写，
+               解决「读数字语速过快」。 */
+            double r = 0.78, p = 1.0;
             try { if (rate != null && !rate.isEmpty()) r = Double.parseDouble(rate); } catch (Exception ignored) {}
             try { if (pitch != null && !pitch.isEmpty()) p = Double.parseDouble(pitch); } catch (Exception ignored) {}
             tts.speak(text, r, p, (lang == null || lang.isEmpty()) ? "zh-CN" : lang);

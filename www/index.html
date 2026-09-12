@@ -614,7 +614,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.18 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.3 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -846,7 +846,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.18 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.3 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -5932,7 +5932,100 @@ function paySpeechSegments(txt){
   t=t.replace(/\s+/g,' ');
   t=t.replace(/[。！!；;，,]+\s*$/,'');
   t=t.replace(/[，,]{2,}/g,'，');
+  /* 第 36 轮：朗读前做「口语化改写」，解决「数字念太快 / 元字听不清」 */
+  t=ttsPolish(t);
   return t ? [t] : [];
+}
+
+/* ---------- 第 36 轮：播报文本口语化改写（治「数字语速过快 + 元字音量小」）----------
+   用户真机反馈：
+     A) 「读数字时语速过快」—— 阿拉伯数字串（28、128.5、2026-09-12）多数中文 TTS 引擎
+        会切成「二八」「一二八点五」，音节密集且不按汉语数词的节奏走，听感就是"冲"、
+        来不及听清。改成**汉语数词**（「二十八」「一百二十八点五」）后，引擎按正常
+        词长合成，节奏自然、清晰度显著提升 —— 这是最有效的一招。
+     B) 「读『元』时声音太小」—— 原因有两个：
+        ① 「元」是句中的单音节量词，紧跟在数字串后面时，中文韵律模型会把它当**轻读**
+           （类似"轻声"）处理，音量自然压低；
+        ② 若引擎按英文习惯断句，数字与「元」之间可能被并入一个连读块。
+        对策：把金额写成「…元整」并**用中文逗号与后文隔开**，让「元整」独立成一个
+        韵律短语的收尾 —— 有停顿托底，音量不会被吞。
+     C) 数字限定范围：只改写 **≤ 6 位** 的数字（金额、数量、天数都在这个量级），
+        避免把编号 / 日期这类长串（如 20260912）也转成大串数词，反而更难听。 */
+const _CN_DIGITS=['零','一','二','三','四','五','六','七','八','九'];
+const _CN_UNITS=['','十','百','千'];
+const _CN_GROUPS=['','万','亿'];
+/* 把 0~9999 的整数转成汉语（如 1024 → 一千零二十四）
+   规则：按千/百/十逐位；中间有零则补「零」；十位为「一」且是最高位时省略「一」
+        （10 → 十，12 → 十二；但 110 → 一百一十 保留「一十」） */
+function cnFour(n){
+  let s='',zero=false;
+  for(let i=0;i<4;i++){
+    const unit=_CN_UNITS[3-i];
+    const d=Math.floor(n/Math.pow(10,3-i))%10;
+    if(d===0){ zero=true; continue; }
+    if(zero&&s) s+='零';
+    zero=false;
+    /* 「一十」只在它前面没有任何数字时才简写成「十」 */
+    const omitOne=(d===1 && unit==='十' && !s);
+    if(!omitOne) s+=_CN_DIGITS[d];
+    s+=unit;
+  }
+  return s||'零';
+}
+/* 整数 → 汉语数词（支持到亿级）。按「万」分组，组间补零 */
+function cnInt(n){
+  if(n===0) return '零';
+  const neg=n<0; n=Math.abs(n);
+  const groups=[];
+  while(n>0){ groups.push(n%10000); n=Math.floor(n/10000); }
+  let out='';
+  for(let gi=groups.length-1; gi>=0; gi--){
+    const part=groups[gi];
+    if(part===0){
+      /* 整组为零：只在后面还有非零组时补一个「零」占位 */
+      if(out && !/零$/.test(out)) out+='零';
+      continue;
+    }
+    let seg=cnFour(part);
+    /* 组内前导零：如 10005 → 一万零五（part=5 且不是最高组时补零） */
+    if(out && part<1000) out+='零';
+    out+=seg+_CN_GROUPS[gi];
+  }
+  return (neg?'负':'')+out.replace(/零+$/,'').replace(/零{2,}/g,'零');
+}
+/* 金额/数量 → 可朗读的中文（28 → 二十八；128.5 → 一百二十八点五） */
+function cnNumberSpeech(numStr){
+  const s=String(numStr).replace(/,/g,'');
+  if(!/^\d{1,6}(\.\d{1,2})?$/.test(s)) return null;   /* 超范围/格式特殊：原样交给引擎 */
+  const parts=s.split('.');
+  let out=cnInt(parseInt(parts[0],10));
+  if(parts.length>1){
+    /* 小数部分逐位读（0.05 → 点零五） */
+    out+='点'+parts[1].split('').map(function(d){ return _CN_DIGITS[Number(d)]; }).join('');
+  }
+  return out;
+}
+/* 改写整句：数字串→汉语数词；金额后的「元」补「整」并断句，避免轻读吞音 */
+function ttsPolish(txt){
+  let t=String(txt||'');
+  if(!t) return t;
+  /* 1) 「数字 + 元」→ 「数词 + 元整，」——逗号制造停顿，托住「元」的音量 */
+  t=t.replace(/(\d{1,6}(?:\.\d{1,2})?)(\s*)(元)/g,function(m,num,sp,unit){
+    const cn=cnNumberSpeech(num);
+    return (cn?cn:num)+unit+'整，';
+  });
+  /* 2) 其余独立数字串（数量、天数等）→ 汉语数词；前面不是数字/点时才处理，
+        避免把已改写的数词或小数部分再动一遍 */
+  t=t.replace(/(?<![\d.])(\d{1,6}(?:\.\d{1,2})?)(?![\d])/g,function(m,num){
+    const cn=cnNumberSpeech(num);
+    return cn?cn:num;
+  });
+  /* 3) 清理改写产生的叠加标点 */
+  t=t.replace(/，{2,}/g,'，');
+  t=t.replace(/，+\s*$/,'');
+  t=t.replace(/([。！!？?])，+/g,'$1');
+  t=t.replace(/，([。！!？?])/g,'$1');
+  return t;
 }
 let _paySpeakTimer=null;
 /* 旧 iOS/部分 WebView 需要持有 utterance 引用，否则可能静默不出声 */
@@ -5949,8 +6042,13 @@ let _payUtter=null;
         随后 voiceschanged 又念一遍 → 两遍叠加/切换音色，听感断裂。
         修法：等待期内**不抢先播**，超时后也只在确实拿到合适音色时才念。
      C) 「不清晰」——rate=0.88 在部分引擎上仍偏快；且 pitch 1.02 的微升会
-        让某些音色发尖。本轮把默认值调为 rate 0.82 / pitch 1.0，并做成常量便于调。 */
-const TTS_RATE=0.82, TTS_PITCH=1.0;
+        让某些音色发尖。第 34 轮把默认值调为 rate 0.82 / pitch 1.0，并做成常量便于调。
+     第 36 轮（真机反馈「读数字语速过快 / 读『元』音量小」）：
+        根因不在 rate —— 是**阿拉伯数字串**被引擎按紧凑音节合成（28 → "二八"），
+        节奏不对所以听感"冲"；「元」是句末单音节量词，被韵律模型当轻声压低。
+        修法在**文本层**（见下方 ttsPolish）：数字→汉语数词、金额补「元整」并断句；
+        同时把 rate 再降到 0.78 作为兜底。 */
+const TTS_RATE=0.78, TTS_PITCH=1.0;
 const TTS_SPEAK_GUARD_MS=2500;      /* 同句去重窗口 */
 let _payLastText='', _payLastAt=0, _paySpeaking=false;
 function speakPay(txt){

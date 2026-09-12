@@ -29,10 +29,12 @@ function main() {
     ['原生 TTS 探测函数', 'function nativeTts(){'],
     ['原生优先调用', "nat.speak(whole, String(TTS_RATE), String(TTS_PITCH), 'zh-CN');"],
     ['整句一次合成', "const whole=segs.join('');"],
-    ['TTS 语速常量（第 34 轮）', 'TTS_RATE=0.82'],
+    ['TTS 语速常量（第 36 轮）', 'TTS_RATE=0.78'],
     ['播报去重窗口（第 34 轮）', 'TTS_SPEAK_GUARD_MS'],
     ['服务端地址可配置（第 33 轮）', 'SYNC_SERVER_KEY'],
     ['Capacitor 壳判定（第 34 轮）', 'function isCapacitorShell(){'],
+    ['数字→汉语数词（第 36 轮）', 'function cnNumberSpeech('],
+    ['金额口语化改写（第 36 轮）', 'function ttsPolish('],
   ];
   let bad = 0;
   for (const [name, needle] of checks) {

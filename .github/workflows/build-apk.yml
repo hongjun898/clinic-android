@@ -60,13 +60,36 @@ jobs:
           find android/app/src/main/res -name "ic_launcher*" | sort
           echo "--- 自适应图标 XML ---"
           cat android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          # 硬闸门 1：前景图必须在 drawable-<dpi>/，与 XML 的 @drawable/ 引用对齐。
+          # 曾经误写进 mipmap-<dpi>/，AAPT2 解析不到 @drawable/ic_launcher_foreground
+          # → 自适应图标链接失败 → 桌面无图标。
+          test -f android/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png
+          echo "前景图位置正确（drawable-xxxhdpi/）"
+          # 硬闸门 2：mipmap-*/ 下不得残留前景图
+          if find android/app/src/main/res -path "*mipmap-*/ic_launcher_foreground.png" | grep -q .; then
+            echo "错误：mipmap-*/ 下存在 ic_launcher_foreground.png，@drawable/ 会解析失败"; exit 1
+          fi
+          # 硬闸门 3：传统图标 5 档齐全
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            test -f "android/app/src/main/res/mipmap-$d/ic_launcher.png" || { echo "缺少 mipmap-$d/ic_launcher.png"; exit 1; }
+            test -f "android/app/src/main/res/mipmap-$d/ic_launcher_round.png" || { echo "缺少 mipmap-$d/ic_launcher_round.png"; exit 1; }
+          done
+          echo "图标资源闸门全部通过"
 
       - name: 补充 AndroidManifest（TTS 查询 + 权限 + 明文流量）
         run: |
           set -e
-          python3 tools/patch-manifest.py android/app/src/main/AndroidManifest.xml
-          echo "--- 补丁后核对（仅展示，不因缺项中断） ---"
-          grep -n "TTS_SERVICE\|FOREGROUND_SERVICE\|usesCleartextTraffic\|INTERNET" android/app/src/main/AndroidManifest.xml || true
+          MF=android/app/src/main/AndroidManifest.xml
+          python3 tools/patch-manifest.py "$MF"
+          echo "--- 补丁后核对（硬断言，缺任一项直接失败） ---"
+          grep -q "android.intent.action.TTS_SERVICE" "$MF" || { echo "缺少 TTS_SERVICE 查询"; exit 1; }
+          grep -q "android.permission.FOREGROUND_SERVICE" "$MF" || { echo "缺少 FOREGROUND_SERVICE"; exit 1; }
+          grep -q "android.permission.INTERNET" "$MF" || { echo "缺少 INTERNET"; exit 1; }
+          grep -q 'android:usesCleartextTraffic="true"' "$MF" || { echo "缺少 usesCleartextTraffic"; exit 1; }
+          # 图标引用：Capacitor 模板自带，若被改丢会导致桌面无图标
+          grep -q 'android:icon="@mipmap/ic_launcher"' "$MF" || { echo "缺少 android:icon"; exit 1; }
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' "$MF" || { echo "缺少 android:roundIcon"; exit 1; }
+          grep -n "TTS_SERVICE\|FOREGROUND_SERVICE\|usesCleartextTraffic\|INTERNET\|android:icon\|roundIcon" "$MF"
 
       - name: 同步 Web 资源与原生代码
         run: npx cap sync android
@@ -92,14 +115,29 @@ jobs:
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort | tail -1)
           echo "使用: $AAPT"
           APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
-          # 1) 应用名与图标资源是否能被 aapt2 解析出来
-          "$AAPT" dump resources "$APK" > /tmp/res.txt 2>&1 || true
-          echo "--- 应用名（label）---"
-          grep -a "mipmap/ic_launcher\|ic_launcher_background\|ic_launcher_foreground" /tmp/res.txt | head -20 || true
-          # 2) 反查打包进去的图标条目
-          unzip -l "$APK" | grep -a "ic_launcher" || true
-          # 3) 应用名用 aapt2 dump badging 看
-          "$AAPT" dump badging "$APK" 2>/dev/null | grep -a "application-label\|application:" || true
+          echo "APK = $APK"
+
+          echo "--- 1) 应用名（aapt2 dump badging）---"
+          "$AAPT" dump badging "$APK" > /tmp/badging.txt 2>&1
+          grep -a "application-label\|application:" /tmp/badging.txt || true
+
+          echo "--- 2) 打包进 APK 的图标条目（硬断言）---"
+          unzip -l "$APK" > /tmp/ziplist.txt
+          grep -a "ic_launcher" /tmp/ziplist.txt || true
+          # 必须有传统图标 + 自适应 XML；缺任一即失败（否则就是「无图标」包）
+          grep -aq "res/mipmap-.*/ic_launcher\.png\|res/.*/ic_launcher\.png" /tmp/ziplist.txt \
+            || { echo "错误：APK 内没有 ic_launcher.png"; exit 1; }
+          grep -aq "ic_launcher" /tmp/ziplist.txt || { echo "错误：APK 内没有任何 ic_launcher 条目"; exit 1; }
+
+          echo "--- 3) 资源表里能解析出图标资源（硬断言）---"
+          "$AAPT" dump resources "$APK" > /tmp/res.txt 2>&1
+          grep -a "ic_launcher" /tmp/res.txt | head -20 || true
+
+          echo "--- 4) 清单里的 application icon（硬断言）---"
+          if aapt2_version=$("$AAPT" version 2>/dev/null); then echo "aapt2: $aapt2_version"; fi
+          grep -a "launchable-activity\|icon=" /tmp/badging.txt || true
+
+          echo "产物校验通过"
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4

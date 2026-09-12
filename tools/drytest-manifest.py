@@ -66,6 +66,10 @@ ok('已放行明文流量', 'android:usesCleartextTraffic="true"' in out)
 ok('保留 allowBackup', 'android:allowBackup="true"' in out)
 ok('保留 label', 'android:label="@string/app_name"' in out)
 ok('保留 MainActivity', 'cn.clinic.manage.MainActivity' in out)
+# 图标引用必须保住（丢了 → 桌面无图标）。CI 的 manifest 步骤会硬断言这两条。
+ok('保留 android:icon（否则桌面无图标）', 'android:icon="@mipmap/ic_launcher"' in out)
+ok('保留 android:roundIcon', 'android:roundIcon="@mipmap/ic_launcher_round"' in out)
+ok('保留 LAUNCHER intent-filter', 'android.intent.category.LAUNCHER' in out)
 
 # XML 合法性（去掉 xmlns 前缀问题：ET 能解析带前缀的属性即可）
 try:

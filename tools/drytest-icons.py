@@ -75,17 +75,53 @@ def main():
         pr = os.path.join(res, "mipmap-" + dpi, "ic_launcher_round.png")
         truth("mipmap-%s/ic_launcher_round.png 存在" % dpi, os.path.exists(pr))
 
-    # 2) 自适应前景 5 档，尺寸 108dp 基准
+    # 2) 自适应前景 5 档，尺寸 108dp 基准。
+    #    ⚠️ 必须在 drawable-<dpi>/ —— adaptive-icon XML 引用的是 @drawable/ic_launcher_foreground。
+    #    早期版本误写到 mipmap-<dpi>/，导致 AAPT2 解析不到资源、自适应图标链接失败 → 桌面无图标。
     for dpi, size in (("mdpi", 108), ("hdpi", 162), ("xhdpi", 216), ("xxhdpi", 324), ("xxxhdpi", 432)):
-        p = os.path.join(res, "mipmap-" + dpi, "ic_launcher_foreground.png")
+        p = os.path.join(res, "drawable-" + dpi, "ic_launcher_foreground.png")
         if not os.path.exists(p):
-            bad("mipmap-%s/ic_launcher_foreground.png 存在" % dpi, "文件缺失")
+            bad("drawable-%s/ic_launcher_foreground.png 存在" % dpi, "文件缺失")
             continue
         im = Image.open(p)
-        eq("mipmap-%s/ic_launcher_foreground.png 尺寸 = %d" % (dpi, size), im.size, (size, size))
+        eq("drawable-%s/ic_launcher_foreground.png 尺寸 = %d" % (dpi, size), im.size, (size, size))
+
+    # 2b) 反向断言：绝不能把前景图留在 mipmap-<dpi>/（否则 @drawable/ 解析失败）
+    for dpi in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
+        wrong = os.path.join(res, "mipmap-" + dpi, "ic_launcher_foreground.png")
+        truth("mipmap-%s/ 下没有 ic_launcher_foreground.png（防止引用错位回归）" % dpi,
+              not os.path.exists(wrong))
+
+    # 2c) 核心闸门：把 XML 里引用的每个资源都在 res/ 下真实解析一遍
+    import glob as _glob
+    import re as _re
+    _errs = []
+    for fn in ("ic_launcher.xml", "ic_launcher_round.xml"):
+        xp = os.path.join(res, "mipmap-anydpi-v26", fn)
+        if not os.path.exists(xp):
+            _errs.append(fn + " 缺失")
+            continue
+        body = open(xp, encoding="utf-8").read()
+        for kind, name in _re.findall(r"@(drawable|mipmap|color)/([A-Za-z0-9_]+)", body):
+            if kind == "color":
+                if not os.path.exists(os.path.join(res, "values", "ic_launcher_background.xml")):
+                    _errs.append(fn + " -> @color/" + name + " 无法解析")
+                continue
+            hit = False
+            for dp in _glob.glob(os.path.join(res, kind + "*")):
+                for ext in (".png", ".webp", ".xml", ".jpg", ".jpeg"):
+                    if os.path.exists(os.path.join(dp, name + ext)):
+                        hit = True
+                        break
+                if hit:
+                    break
+            if not hit:
+                _errs.append(fn + " -> @" + kind + "/" + name + " 无法解析")
+    truth("adaptive-icon 引用的资源全部可在 res/ 下解析（防「桌面无图标」）",
+          not _errs, "; ".join(_errs))
 
     # 3) 前景透明画布 + 有内容 + 内容落在安全区内
-    fg = Image.open(os.path.join(res, "mipmap-xxxhdpi", "ic_launcher_foreground.png")).convert("RGBA")
+    fg = Image.open(os.path.join(res, "drawable-xxxhdpi", "ic_launcher_foreground.png")).convert("RGBA")
     S = fg.size[0]
     px = fg.load()
     corner_alpha = px[1, 1][3]
