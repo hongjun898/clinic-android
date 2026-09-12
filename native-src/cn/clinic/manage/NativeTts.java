@@ -40,6 +40,15 @@ public class NativeTts {
     private volatile boolean ready = false;
     private volatile boolean initFailed = false;
 
+    /** 第 34 轮：当前正在念的文本 + 起念时间，用于去重与打断判断 */
+    private volatile String curText = null;
+    private volatile long curStartAt = 0L;
+    /** 同句去重窗口：这段时间内重复请求同一句，直接忽略（避免中途打断造成「忽大忽小」） */
+    private static final long DUP_GUARD_MS = 2500L;
+    /** 语速/音调只在变化时下发生效，避免每次 speak 都重置音频增益 */
+    private float appliedRate = -1f;
+    private float appliedPitch = -1f;
+
     /** ready 之前收到的播报请求（只保留最后一条，避免堆积） */
     private String pendingText = null;
     private float pendingRate = 0.88f;
@@ -106,7 +115,12 @@ public class NativeTts {
         }
     }
 
-    /** 从系统可用音色里挑一个中文音色（优先 high quality，其次名字含 zh/Chinese） */
+    /** 从系统可用音色里挑一个中文音色（优先高质量、优先离线）
+     *
+     *  第 34 轮修正「卡顿不连贯」：原来的评分把「离线」只加了 5 分，
+     *  而网络音色能靠 QUALITY_VERY_HIGH(+30) 轻松反超 —— 结果选到网络音色，
+     *  信号不好时边下边念，就是「一顿一顿、丢字」。现在改为**离线优先**：
+     *  先只看离线音色，一个离线中文音色都没有时，才退回网络音色。 */
     private void pickBestVoice() {
         if (tts == null) return;
         try {
@@ -114,8 +128,9 @@ public class NativeTts {
             Set<Voice> voices = tts.getVoices();
             if (voices == null || voices.isEmpty()) return;
 
-            Voice best = null;
-            int bestScore = -1;
+            Voice bestOffline = null;   int bestOfflineScore = -1;
+            Voice bestAny     = null;   int bestAnyScore     = -1;
+
             for (Voice v : voices) {
                 if (v == null) continue;
                 Locale loc = v.getLocale();
@@ -129,20 +144,24 @@ public class NativeTts {
                 else continue;   // 只要中文
 
                 if (nm.contains("chinese") || nm.contains("mandarin") || nm.contains("普通话")) s += 20;
-                // 高质量音色优先
                 int q = v.getQuality();
                 if (q >= Voice.QUALITY_VERY_HIGH) s += 30;
                 else if (q >= Voice.QUALITY_HIGH) s += 20;
-                // 网络音色通常更自然，但离线更可靠；这里给 network 少量加分
-                if (!v.isNetworkConnectionRequired()) s += 5;
 
-                // 排除明显是「成人/儿童」等特殊角色的杂音色（保守：不排除，只是不额外加分）
+                boolean offline = !v.isNetworkConnectionRequired();
+                if (offline) s += 40;   // 第 34 轮：离线硬性优先（原为 +5）
 
-                if (s > bestScore) { bestScore = s; best = v; }
+                if (s > bestAnyScore) { bestAnyScore = s; bestAny = v; }
+                if (offline && s > bestOfflineScore) { bestOfflineScore = s; bestOffline = v; }
             }
-            if (best != null) {
-                tts.setVoice(best);
-                Log.i(TAG, "选用音色: " + best.getName() + " score=" + bestScore);
+
+            Voice chosen = (bestOffline != null) ? bestOffline : bestAny;
+            int chosenScore = (bestOffline != null) ? bestOfflineScore : bestAnyScore;
+            if (chosen != null) {
+                tts.setVoice(chosen);
+                Log.i(TAG, "选用音色: " + chosen.getName()
+                        + " score=" + chosenScore
+                        + " offline=" + !chosen.isNetworkConnectionRequired());
             }
         } catch (Exception e) {
             Log.w(TAG, "pickBestVoice 异常", e);
@@ -151,13 +170,23 @@ public class NativeTts {
 
     // ---------------- 供网页调用的接口（方法签名要与 JS 侧 injection 一致） ----------------
 
-    /** 播报。rate/pitch 与网页侧保持一致（0.88 / 1.02） */
+    /** 播报。rate/pitch 与网页侧保持一致 */
     public void speak(String text, double rate, double pitch, String lang) {
         if (text == null || text.trim().isEmpty()) return;
         float r = (float) rate;
         float p = (float) pitch;
         if (r <= 0) r = 0.88f;
-        if (p <= 0) p = 1.02f;
+        if (p <= 0) p = 1.0f;
+
+        /* 第 34 轮：同句去重。一次缴费提示若被触发两次（页面重渲染 / 多端回推），
+           第二次 QUEUE_FLUSH 会**从中间截断**第一句 —— 人耳听到的就是
+           「前半句正常、后半句突然发轻」，即「声音大小不一」的主因。 */
+        long now = System.currentTimeMillis();
+        String prev = curText;
+        if (prev != null && prev.equals(text) && (now - curStartAt) < DUP_GUARD_MS) {
+            Log.i(TAG, "同句在去重窗口内，忽略重复播报");
+            return;
+        }
 
         if (!ready) {
             // 引擎还没就绪：缓存请求，init 成功后补播
@@ -174,13 +203,25 @@ public class NativeTts {
     private void speakNow(String text, float rate, float pitch) {
         if (tts == null) return;
         try {
-            tts.setSpeechRate(rate);
-            tts.setPitch(pitch);
+            /* 第 34 轮：语速/音调**只在变化时**下发。每次 speak 都重设会让引擎
+               重新计算音频增益，正是「音量忽大忽小」的另一个来源。 */
+            if (Math.abs(rate - appliedRate) > 0.001f) {
+                tts.setSpeechRate(rate);
+                appliedRate = rate;
+            }
+            if (Math.abs(pitch - appliedPitch) > 0.001f) {
+                tts.setPitch(pitch);
+                appliedPitch = pitch;
+            }
 
             Bundle params = new Bundle();
             // 用 QUEUE_FLUSH：新播报直接打断旧的，符合「刷新缴费金额」的场景
+            // （同句重复的情况已在 speak() 里被去重拦掉，不会误伤）
             int mode = TextToSpeech.QUEUE_FLUSH;
             String uttId = "clinic_" + System.currentTimeMillis();
+
+            curText = text;
+            curStartAt = System.currentTimeMillis();
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 tts.speak(text, mode, params, uttId);
@@ -196,6 +237,8 @@ public class NativeTts {
     /** 停止播报 */
     public void stop() {
         pendingText = null;
+        curText = null;
+        curStartAt = 0L;
         try { if (tts != null) tts.stop(); } catch (Exception e) { Log.w(TAG, "stop 异常", e); }
     }
 

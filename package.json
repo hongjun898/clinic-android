@@ -1,8 +1,8 @@
 {
   "name": "clinic-android",
-  "version": "2.16.0",
+  "version": "2.18.0",
   "private": true,
-  "description": "诊所管理系统 · Android 原生壳（Capacitor + 原生 TTS 桥接）",
+  "description": "门诊管理 · Android 原生壳（Capacitor + 原生 TTS 桥接）",
   "scripts": {
     "sync": "cap sync android",
     "add:android": "cap add android",

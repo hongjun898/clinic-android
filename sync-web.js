@@ -27,8 +27,12 @@ function main() {
   // 基本自检：确认这是带原生桥接的版本，避免把旧文件同步进来
   const checks = [
     ['原生 TTS 探测函数', 'function nativeTts(){'],
-    ['原生优先调用', "nat.speak(whole, '0.88', '1.02', 'zh-CN');"],
+    ['原生优先调用', "nat.speak(whole, String(TTS_RATE), String(TTS_PITCH), 'zh-CN');"],
     ['整句一次合成', "const whole=segs.join('');"],
+    ['TTS 语速常量（第 34 轮）', 'TTS_RATE=0.82'],
+    ['播报去重窗口（第 34 轮）', 'TTS_SPEAK_GUARD_MS'],
+    ['服务端地址可配置（第 33 轮）', 'SYNC_SERVER_KEY'],
+    ['Capacitor 壳判定（第 34 轮）', 'function isCapacitorShell(){'],
   ];
   let bad = 0;
   for (const [name, needle] of checks) {

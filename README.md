@@ -1,6 +1,6 @@
-# 诊所管理系统 · Android 打包工程（Capacitor + 原生 TTS 桥接）
+# 门诊管理 · Android 打包工程（Capacitor + 原生 TTS 桥接）
 
-把网页版诊所管理系统打包成 **Android 安装包（APK）**，并解决一个关键问题：
+把网页版诊所管理系统打包成 **Android 安装包（APK）**，应用名显示为「**门诊管理**」，并解决一个关键问题：
 
 > **Android 的网页组件（WebView）不支持网页语音合成**，所以任何「把网页装进 App」的壳
 > （WebToApp / Cordova / Capacitor 都一样）在里面按「语音播报」都没有声音。
@@ -73,7 +73,7 @@ bash push-to-github.sh https://github.com/你的用户名/clinic-android.git
 ```bash
 git init
 git add .
-git commit -m "诊所管理系统 Android 打包工程"
+git commit -m "门诊管理 Android 打包工程"
 git branch -M main
 git remote add origin https://github.com/<你的用户名>/clinic-android.git
 git push -u origin main
@@ -95,14 +95,14 @@ git push -u origin main
 
 1. 点进那条成功的构建记录
 2. 拉到页面最下方 **Artifacts** 区域
-3. 点 **诊所管理系统-Android-APK** 下载
-4. 得到一个 zip，解压后里面是 `诊所管理系统-Android.apk`
+3. 点 **门诊管理-Android-APK** 下载
+4. 得到一个 zip，解压后里面是 `门诊管理-Android.apk`
 
 ### 第 6 步：装到手机上
 
 1. 把 APK 传到手机（微信文件传输助手 / 数据线 / 网盘都行）
 2. 手机上点开安装，系统会提示「允许安装未知来源应用」→ 允许
-3. 装好后桌面上会出现「诊所管理系统」图标
+3. 装好后桌面上会出现「**门诊管理**」图标（图标与服务端/网页同一张）
 
 ---
 
@@ -143,18 +143,53 @@ git push
 ```
 android-tts/
 ├── .github/workflows/build-apk.yml   GitHub 云端构建流程
-├── capacitor.config.json             Capacitor 配置
+├── capacitor.config.json             Capacitor 配置（appName = 门诊管理）
 ├── package.json                      依赖声明
+├── ICON_256.PNG                  ★ 应用图标源（与网页 favicon / fnOS 服务端同一张）
 ├── push-to-github.sh             ★ 一键推送到 GitHub（推荐用这个）
 ├── sync-web.js                       把网页版同步到 www/
-├── check-java.sh                  ★ 本地 Java 编译自检（可选）
+├── check-java.sh                 ★ 本地 Java 编译自检（可选）
 ├── www/index.html                    网页本体（构建时打包进 APK）
 ├── native-src/cn/clinic/manage/
 │   ├── MainActivity.java             放行自动播放 + 注入原生 TTS
-│   └── NativeTts.java             ★ 原生 TTS 桥接核心（包住系统 TextToSpeech）
+│   └── NativeTts.java            ★ 原生 TTS 桥接核心（包住系统 TextToSpeech）
+├── tools/
+│   ├── make-android-icons.py     ★ 由 ICON_256.PNG 生成 Android 全套 mipmap
+│   ├── drytest-icons.py              图标生成干跑自检（36 项断言）
+│   ├── patch-manifest.py             给 AndroidManifest 打补丁（TTS/权限/明文流量）
+│   └── drytest-manifest.py           Manifest 补丁干跑自检（12 项断言）
 ├── .javacheck/                       本地编译自检用的最小 stub（不影响云端构建）
 └── README.md                         本文件
 ```
+
+---
+
+## 六·一、应用图标怎么统一的
+
+**一张图，四端共用**（网页 favicon、侧边栏品牌位、fnOS 服务端、Android 桌面图标）：
+
+```
+fnpack/clinic/ICON_256.PNG (256×256, 96317 B, md5 f1750ad3…)
+   │
+   ├─→ 网页 <link rel="icon"> + <link rel="apple-touch-icon">  (base64 内嵌)
+   ├─→ 网页侧边栏 .brand-icon                                   (base64 内嵌)
+   ├─→ fnOS 服务端  app/ui/images/icon_256.png
+   └─→ Android 桌面图标（CI 里由 tools/make-android-icons.py 现生成）
+         ├─ mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png    48/72/96/144/192
+         ├─ mipmap-*/ic_launcher_round.png                              同上
+         ├─ mipmap-*/ic_launcher_foreground.png                         108/162/216/324/432
+         ├─ mipmap-anydpi-v26/ic_launcher{,_round}.xml                  自适应图标描述
+         └─ values/ic_launcher_background.xml                           背景色 #0A2B1B
+```
+
+> **为什么图标必须在 CI 里生成**：`npx cap add android` 用的是 Capacitor 的默认模板图标
+> （蓝底 Capacitor 标志），会覆盖 `res/mipmap-*`；而 `capacitor.config.json` 里**没有图标字段**，
+> Capacitor 只认 appId / appName / webDir。所以图标只能在 `cap add android` **之后**注入。
+
+> **自适应图标的前景缩放是算出来的，不是拍脑袋定的**：Android 8+ 的系统只保证
+> 中心 66dp 圆内完整可见（66/108 = 0.6111），而本图标是近乎满幅的圆角方块
+> （最远角距 = 源图半宽的 1.226 倍）。若按「占画布 61%」直接缩放，四角会被启动器裁掉。
+> 正确算法：`占比 = (66/108) ÷ 1.2264 × 0.92 ≈ 0.4584`。`drytest-icons.py` 里有对应断言把关。
 
 ---
 
@@ -164,10 +199,14 @@ android-tts/
 |---|---|---|
 | 两个 Java 文件能编译 | 真实 `javac 17.0.20.1` + 最小 stub | ✅ **0 error**，产出 7 个 class |
 | 网页侧原生/网页分流 | 19 项自动化断言 | ✅ **19 / 19** |
-| `www/index.html` 与正式版一致 | MD5 | ✅ `e02e86a0e8fd` 完全相同 |
-| 工作流结构完整 | 关键步骤齐备性检查 | ✅ 10/10 步骤齐备 |
+| `www/index.html` 与正式版一致 | MD5 | ✅ 完全相同（每次出包后由 `sync-web.js` 保证） |
+| 工作流结构完整 | YAML 解析 + 步骤齐备性检查 | ✅ 16 步齐备、顺序正确 |
 | 工作流内嵌脚本缩进 | heredoc 顶格检查 | ✅ 正确（不会 `IndentationError`） |
 | `package.json` / `capacitor.config.json` | JSON 解析 | ✅ 合法 |
+| 图标生成（含 66dp 安全圆） | `drytest-icons.py` | ✅ **36 / 36** |
+| APK 图标统一 + 应用名「门诊管理」 | `verify_round35.js` | ✅ **49 / 49** |
+| Manifest 补丁 | `drytest-manifest.py` | ✅ **12 / 12** |
+| 客户端全量回归 | `run_all_verify.js`（21 个脚本） | ✅ **1288 / 1288，0 失败** |
 
 > 说明：Java 编译用的是「最小 stub + 真实 javac」——stub 只顶替 Android/Capacitor 的 API 签名，
 > 因此能抓出**语法错误、拼错的常量、类型不匹配、符号找不到**，效果与云端一致。
@@ -178,7 +217,7 @@ android-tts/
 ## 八、技术备注
 
 - **为什么 `addJavascriptInterface` 的参数要拍平成字符串**：Android 的 JS 桥只能传基本类型，
-  不能传 JS 对象。所以网页侧调用是 `NativeTTS.speak(文本, '0.88', '1.02', 'zh-CN')`，
+  不能传 JS 对象。所以网页侧调用是 `NativeTTS.speak(文本, '0.82', '1', 'zh-CN')`，
   四个独立参数，而不是一个配置对象。
 - **为什么 `NativeTts` 要缓存播报请求**：`TextToSpeech` 的初始化是**异步**的，
   在 `onInit` 回调成功之前调用 `speak` 会被静默丢弃——这是原生 TTS 最常见的「没声音」原因。

@@ -1,6 +1,6 @@
 {
   "appId": "cn.clinic.manage",
-  "appName": "诊所管理系统",
+  "appName": "门诊管理",
   "webDir": "www",
   "bundledWebRuntime": false,
   "android": {

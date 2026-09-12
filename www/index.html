@@ -614,7 +614,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.17 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.18 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -796,6 +796,13 @@ input,select,textarea{outline:none}
                 </div>
                 <div class="field-hint" id="bk-dir-hint"></div>
               </div>
+              <div class="field" id="sync-server-field"><label>服务器地址（多端同步用）</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input id="sync-server" placeholder="留空 = 用当前网址（浏览器内）" style="flex:1">
+                  <button class="btn btn-sm btn-secondary" type="button" id="sync-server-test">测试</button>
+                </div>
+                <div class="field-hint" id="sync-server-hint"></div>
+              </div>
               <button class="btn btn-secondary" id="bk-now" style="margin-top:8px" data-page-node-id="v7Nxzcpj7ap0JE8PL7E6Sj">⟳ 立即备份</button>
             </div>
           </div>
@@ -839,7 +846,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.17 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.18 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -1530,7 +1537,92 @@ const SYNC_DIRTY_KEY='clinic_sync_dirty_v1';
 function markSyncDirty(){ try{ localStorage.setItem(SYNC_DIRTY_KEY,'1'); }catch(e){} }
 function clearSyncDirty(){ try{ localStorage.removeItem(SYNC_DIRTY_KEY); }catch(e){} }
 let _syncOn=false, _syncBusy=false, _syncTimer=null, _syncDirty=false, _syncPulling=false, _syncFail=0, _pullDeferred=false;
-function syncEnabled(){ try{ return typeof window.fetch==='function' && location.protocol!=='file:'; }catch(e){ return false; } }
+/* 第 33 轮：多端同步的服务端地址可配置（APK 场景必需）。
+   背景：APK 里网页从本地 assets 加载，location.origin 是 https://localhost，
+   相对路径 /api/xxx 会打到手机自己身上，永远连不到 NAS。
+
+   实现方式：**包装全局 fetch / EventSource / sendBeacon**，在底层把相对 /api 路径
+   自动前缀成用户配置的绝对地址。这样全部 13 个调用点一行都不用改，
+   也天然覆盖以后新增的接口 —— 比逐个改调用点稳得多。
+   留空时行为与以前完全一致（走同源）。 */
+const SYNC_SERVER_KEY='clinic_sync_server_v1';
+function syncServerBase(){
+  try{
+    let v='';
+    /* 注意：本函数定义在 const Store 之前，运行时虽已就绪，但仍用 typeof 兜底 */
+    if(typeof Store!=='undefined' && Store && Store.data && Store.data.cfg){
+      v=String(Store.data.cfg.syncServer||'').trim();
+    }
+    if(!v){ try{ v=String(localStorage.getItem(SYNC_SERVER_KEY)||'').trim(); }catch(e){} }
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v='http://'+v;   /* 用户只填了 IP:端口 也能用 */
+    return v.replace(/\/+$/,'');
+  }catch(e){ return ''; }
+}
+function resolveApi(u){
+  try{
+    if(typeof u!=='string') return u;
+    if(!/^\/api\//.test(u)) return u;              /* 只管 /api/ 开头的，其它不碰 */
+    const b=syncServerBase();
+    return b ? (b+u) : u;
+  }catch(e){ return u; }
+}
+(function installApiPrefixer(){
+  try{
+    const rawFetch=window.fetch;
+    if(typeof rawFetch==='function' && !rawFetch.__apiPrefixed){
+      const wrapped=function(input, init){
+        try{
+          if(typeof input==='string') input=resolveApi(input);
+          else if(input && typeof input.url==='string'){
+            const fixed=resolveApi(input.url);
+            if(fixed!==input.url) input=new Request(fixed, input);
+          }
+        }catch(e){}
+        return rawFetch.call(this, input, init);
+      };
+      wrapped.__apiPrefixed=true;
+      window.fetch=wrapped;
+    }
+    const rawBeacon=navigator.sendBeacon;
+    if(typeof rawBeacon==='function' && !rawBeacon.__apiPrefixed){
+      const wrapped=function(u,d){
+        try{ u=resolveApi(u); }catch(e){}
+        return rawBeacon.call(navigator, u, d);
+      };
+      wrapped.__apiPrefixed=true;
+      navigator.sendBeacon=wrapped;
+    }
+    const rawES=window.EventSource;
+    if(typeof rawES==='function' && !rawES.__apiPrefixed){
+      const wrapped=function(u,c){
+        try{ u=resolveApi(u); }catch(e){}
+        return new rawES(u, c);
+      };
+      wrapped.__apiPrefixed=true;
+      window.EventSource=wrapped;
+    }
+  }catch(e){}
+})();
+/* 第 33 轮：判断是否可以多端同步。
+   旧实现只看 location.protocol!=='file:' —— 在 App 里协议是 https:（Capacitor 的
+   https://localhost），于是永远返回 true，同步全部打到手机自己身上后静默失败。
+   新口径：**配置了服务器地址 → 一定可同步；没配地址 → 只有在「真·同源浏览器」
+   场景才可同步**（排除 Capacitor 的 localhost 壳与 file:）。 */
+function isCapacitorShell(){
+  try{
+    return (location.protocol==='https:' && (location.hostname==='localhost' || location.hostname==='127.0.0.1'));
+  }catch(e){ return false; }
+}
+function syncEnabled(){
+  try{
+    if(typeof window.fetch!=='function') return false;
+    if(syncServerBase()) return true;          /* 有地址：App / 浏览器 都能同步 */
+    if(location.protocol==='file:') return false;
+    if(isCapacitorShell()) return false;       /* App 里没填地址 = 不同步（避免打本机） */
+    return true;                               /* 浏览器同源，保持原行为 */
+  }catch(e){ return false; }
+}
 function syncRerender(){
   try{
     const a=document.querySelector('.page.active');
@@ -2166,6 +2258,87 @@ function saveBackupDir(v,opt){
       return {ok:false,error:msg};
     });
 }
+/* ---------- 第 33 轮：多端同步 · 服务器地址设置 ---------- */
+function saveSyncServer(v){
+  const val=String(v==null?'':v).trim();
+  try{ Store.data.cfg.syncServer=val; Store.save(); }catch(e){}
+  /* 额外写一份到 localStorage：Store 尚未加载时也能读到（双重保险） */
+  try{
+    if(val) localStorage.setItem(SYNC_SERVER_KEY,val);
+    else localStorage.removeItem(SYNC_SERVER_KEY);
+  }catch(e){}
+  renderSyncServerHint();
+  /* 地址变了，重置同步状态并重新连接 */
+  try{ _syncOn=false; _syncFail=0; if(_syncEs){ _syncEs.close(); _syncEs=null; } }catch(e){}
+  if(syncEnabled()){
+    try{ syncListen(); syncPullForce(); }catch(e){}
+    toast(val?('已设置服务器地址：'+val):'已清空服务器地址，改回当前网址同步');
+  }else{
+    toast('已清空服务器地址（当前环境无法自动同步）');
+  }
+}
+function renderSyncServerHint(){
+  const el=document.getElementById('sync-server-hint'); if(!el) return;
+  const inp=document.getElementById('sync-server');
+  if(inp && inp.value!==String(Store.data.cfg.syncServer||'')) inp.value=String(Store.data.cfg.syncServer||'');
+  const b=syncServerBase();
+  if(b){
+    const isHttps=/^https:\/\//i.test(b);
+    el.innerHTML='✅ 多端同步已指向：<code>'+escapeHtml(b)+'</code><br>'+
+      '<span style="color:var(--text-tertiary)">手机与电脑/NAS 会共享同一份数据。地址变了改这里即可，不用重装 App。</span>'+
+      (isHttps?'<br><span style="color:var(--text-tertiary)">已按 HTTPS 连接，数据经加密传输。</span>':'');
+    return;
+  }
+  /* 未配置：区分「浏览器里」和「App 里」两种场景 */
+  let isApp=false;
+  try{ isApp=isCapacitorShell()||!!nativeTts(); }catch(e){}
+  if(isApp){
+    el.innerHTML='<span style="color:var(--warning)">⚠ <b>当前是 App 环境，必须填服务器地址才能同步</b></span><br>'+
+      'App 里没有「当前网址」可用，请填写服务地址，二选一：<br>'+
+      '· 局域网：<code>http://192.168.50.2:7989</code>（只填 <code>192.168.50.2:7989</code> 也行）<br>'+
+      '· 外网：<code>https://你的域名:端口</code>（有 HTTPS 就带上 <code>https://</code>）<br>'+
+      '<span style="color:var(--text-tertiary)">留空 = 不同步，数据只存在本机。填好后点「测试」确认能连上。</span>';
+    return;
+  }
+  el.innerHTML='留空 = 用当前网址同步（浏览器里打开时就是同源，行为与以前一致）。<br>'+
+    '<span style="color:var(--text-tertiary)">一般无需填写；只有 App 内或不希望走后端代理时才需要。</span>';
+}
+function testSyncServer(){
+  const el=document.getElementById('sync-server-hint');
+  const b=syncServerBase();
+  if(!b){ toast('请先填写服务器地址'); return; }
+  if(el){ el.style.color=''; el.innerHTML='正在测试 '+escapeHtml(b)+' …'; }
+  const ctl=new AbortController();
+  const tm=setTimeout(function(){ ctl.abort(); },8000);
+  fetch(b+'/api/health',{cache:'no-store',signal:ctl.signal})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(j){
+      clearTimeout(tm);
+      if(j&&j.ok){
+        /* 第 34 轮：/api/health 不一定带 version，退而显示 service/node，信息量更足 */
+        let meta='';
+        if(j.version) meta='（服务端版本 '+escapeHtml(String(j.version))+'）';
+        else if(j.service) meta='（服务 '+escapeHtml(String(j.service))+(j.node?(' · '+escapeHtml(String(j.node))):'')+'）';
+        if(el) el.innerHTML='✅ 连接成功：<code>'+escapeHtml(b)+'</code>'+meta+'<br>可以正常多端同步。';
+        toast('连接成功');
+        try{ _syncOn=true; syncPullForce(); }catch(e){}
+      }else{
+        if(el) el.innerHTML='<span style="color:var(--danger)">⚠ 地址可达，但不是本系统的服务端</span>（返回内容不符合预期）。请确认端口与路径。';
+        toast('返回内容不符');
+      }
+    })
+    .catch(function(e){
+      clearTimeout(tm);
+      if(el) el.innerHTML='<span style="color:var(--danger)">⚠ 连接失败：'+escapeHtml(String(e&&e.name==='AbortError'?'超时':(e&&e.message||e)))+'</span><br>'+
+        '请检查：① 地址与端口是否正确 ② 手机与 NAS 是否在同一网络 ③ NAS 上服务是否在运行。'+
+        '<br>若用 http 访问，还需本 App 已放行明文流量（已内置）。';
+      toast('连接失败');
+    });
+}
+function refreshSyncServerHint(){ renderSyncServerHint(); }
+window.saveSyncServer=saveSyncServer;
+window.testSyncServer=testSyncServer;
+
 function refreshBackupDirHint(){
   const el=document.getElementById('bk-dir-hint'); if(!el) return;
   const d=(Store.data.cfg.backup.dir||'').trim();
@@ -5158,9 +5331,15 @@ function renderTtsStatus(){
   const nat=nativeTts();
   if(nat){
     el.style.color='var(--success)';
-    let engines='';
+    let engines='', voice='';
     try{ if(typeof nat.engineName==='function'){ const n=String(nat.engineName()||''); if(n) engines='（'+n+'）'; } }catch(e){}
-    el.textContent='✓ 正在使用系统原生语音播报'+engines+'。这是 App 内置的语音通道，不依赖网页语音引擎。';
+    try{ if(typeof nat.voiceName==='function'){ const v=String(nat.voiceName()||''); if(v) voice='音色：'+v; } }catch(e){}
+    /* 第 34 轮：把引擎/音色暴露出来，方便排查「卡顿、不清晰」——
+       若引擎是系统自带的精简引擎（如 com.google.android.tts 之外的 AOSP 引擎），
+       音质天生较差，需要用户去系统设置里换一个更好的语音引擎。 */
+    el.innerHTML='✓ 正在使用系统原生语音播报'+escapeHtml(engines)+'。这是 App 内置的语音通道，不依赖网页语音引擎。'+
+      (voice?('<br><span style="color:var(--text-tertiary)">'+escapeHtml(voice)+
+        '　若听感仍卡顿或不清晰，可到手机「设置 → 无障碍 → 文字转语音(TTS)」里换用更好的语音引擎，或把语速调慢。</span>'):'');
     return;
   }
   const ok=hzTtsSupported();
@@ -5190,6 +5369,7 @@ function renderTtsStatus(){
 window.renderTtsStatus=renderTtsStatus;
   setupSettingPad();
   refreshBackupDirHint();
+  renderSyncServerHint();
 }
 let settingsBound=false;
 function bindSettings(){
@@ -5245,6 +5425,15 @@ function bindSettings(){
   document.getElementById('bk-dir-pick').onclick=function(){ window.pickBackupDir(); };
   document.getElementById('bk-dir-test').onclick=function(){ window.testBackupDir(); };
   document.getElementById('bk-dir').onchange=function(){ saveBackupDir(this.value); };
+  /* 第 33 轮：服务器地址（多端同步）。改动后立刻写 localStorage 兜底，
+     因为 Store.save() 会触发 syncPush，而 syncPush 依赖此刻的新地址。 */
+  const ssInp=document.getElementById('sync-server');
+  if(ssInp){
+    ssInp.onchange=function(){ saveSyncServer(this.value); };
+    ssInp.onblur=function(){ saveSyncServer(this.value); };
+  }
+  const ssTest=document.getElementById('sync-server-test');
+  if(ssTest) ssTest.onclick=function(){ testSyncServer(); };
   document.getElementById('btn-restore').onclick=function(){ document.getElementById('restore-file').click(); };
   document.getElementById('restore-file').onchange=function(e){
     const f=e.target.files[0]; if(!f) return;
@@ -5653,9 +5842,19 @@ function payVoiceList(){
   try{ _payVoices=window.speechSynthesis?window.speechSynthesis.getVoices():null; }catch(e){ _payVoices=null; }
   return _payVoices||[];
 }
-/* 从候选里挑最合适的中文 voice：zh-CN 优先 → zh 开头 → 含 Chinese/中文 */
+/* 从候选里挑最合适的中文 voice：zh-CN 优先 → zh 开头 → 含 Chinese/中文
+   第 34 轮：**离线音色优先**。网络音色（名字里带 network / -network）在信号差时
+   会边下边念，表现为「一顿一顿、丢字、忽大忽小」—— 这是「卡顿不连贯」的主因之一。
+   所以把「离线」从 +2/+5 的小加分，改成**硬性优先**：先只在离线音色里挑，
+   全都没有离线音色时才退而用网络音色。 */
 function pickZhVoice(){
   const vs=payVoiceList(); if(!vs||!vs.length) return null;
+  const isNet=function(v){
+    try{
+      if(v.localService===false) return true;
+      return /network|在线|联网/i.test(String(v.name||''));
+    }catch(e){ return false; }
+  };
   const score=function(v){
     const lg=String(v.lang||'').replace('_','-').toLowerCase();
     const nm=String(v.name||'').toLowerCase();
@@ -5665,12 +5864,19 @@ function pickZhVoice(){
     if(/google/.test(nm)) s+=12;          /* Google 中文合成通常更自然 */
     if(/(premium|enhanced|neural|自然|增强)/.test(nm)) s+=25;
     if(/(huihui|xiaoxiao|yaoyao|kangkang|tingting|zhiyu|yunxi)/.test(nm)) s+=18;
-    if(/local/i.test(String(v.localService))) s+=2;
+    if(!isNet(v)) s+=40;                  /* 离线音色：硬性优先（原为 +2） */
     return s;
   };
-  let best=null,bs=0;
-  vs.forEach(function(v){ const s=score(v); if(s>bs){ bs=s; best=v; } });
-  return bs>=70?best:null;
+  let best=null,bs=0,bestOffline=null,bsOffline=0;
+  vs.forEach(function(v){
+    const s=score(v);
+    if(s>bs){ bs=s; best=v; }
+    if(!isNet(v) && s>bsOffline){ bsOffline=s; bestOffline=v; }
+  });
+  /* 有离线中文音色 → 一定用它；否则才用得分最高的网络音色 */
+  const pick = bestOffline || best;
+  const sc   = bestOffline ? bsOffline : bs;
+  return sc>=70?pick:null;
 }
 /* ---------- 第 32 轮：原生 TTS 桥接（给打包成 App 的环境用） ----------
    背景：Android WebView 从 Chromium 层面就**不实现** Web Speech 的合成端
@@ -5731,6 +5937,22 @@ function paySpeechSegments(txt){
 let _paySpeakTimer=null;
 /* 旧 iOS/部分 WebView 需要持有 utterance 引用，否则可能静默不出声 */
 let _payUtter=null;
+/* ---------- 第 34 轮：播报去重 + 防打断（治「卡顿不连贯 / 声音大小不一」）----------
+   症状与根因（本轮实测定位）：
+     A) 「声音大小不一」—— 根因是 **QUEUE_FLUSH 打断**：一次提示若被触发两次
+        （例如保存后 showPage 重渲染又触发一次、或多端同步回推后再次弹提示），
+        第二次 speak 会**从中间截断**第一句。人耳听到的就是「前半句正常、
+        后半句突然变轻/消失」—— 听起来就是音量忽大忽小。修法：同一句文案在
+        TTS_SPEAK_GUARD_MS 内只念一次；且正在念时**不重复起调**。
+     B) 「卡顿不连贯」—— 网络音色边下边念（见 pickZhVoice 已改为离线优先）；
+        以及「等 voiceschanged」期间 800ms 定时器到点会**先念一遍默认音**，
+        随后 voiceschanged 又念一遍 → 两遍叠加/切换音色，听感断裂。
+        修法：等待期内**不抢先播**，超时后也只在确实拿到合适音色时才念。
+     C) 「不清晰」——rate=0.88 在部分引擎上仍偏快；且 pitch 1.02 的微升会
+        让某些音色发尖。本轮把默认值调为 rate 0.82 / pitch 1.0，并做成常量便于调。 */
+const TTS_RATE=0.82, TTS_PITCH=1.0;
+const TTS_SPEAK_GUARD_MS=2500;      /* 同句去重窗口 */
+let _payLastText='', _payLastAt=0, _paySpeaking=false;
 function speakPay(txt){
   try{
     if(!cfgFlag('payVoice', true)) return;
@@ -5740,16 +5962,29 @@ function speakPay(txt){
     if(!segs.length) return;
     const whole=segs.join('');   /* 整句：不再分片连播 */
 
+    /* —— 去重：同句在窗口内只念一次，避免第二次 QUEUE_FLUSH 把第一句截断 —— */
+    const now=Date.now();
+    if(whole===_payLastText && (now-_payLastAt)<TTS_SPEAK_GUARD_MS) return;
+    /* —— 正在念同一句 → 不起调（重复 speak 会重置增益，听成忽大忽小）—— */
+    if(_paySpeaking && whole===_payLastText) return;
+    _payLastText=whole; _payLastAt=now;
+
     /* 第 32 轮：有原生桥接就走原生（Android 系统 TTS），否则回落网页引擎 */
     const nat=nativeTts();
     if(nat){
       try{
-        /* 原生侧负责整句合成与播放；语速与网页侧保持一致（0.88）。
+        /* 原生侧负责整句合成与播放；语速与网页侧保持一致。
            注意：Android 的 addJavascriptInterface 只能传基本类型/String，
            不能直接传 JS 对象 —— 所以这里把参数拍平成独立参数。 */
-        nat.speak(whole, '0.88', '1.02', 'zh-CN');
+        _paySpeaking=true;
+        nat.speak(whole, String(TTS_RATE), String(TTS_PITCH), 'zh-CN');
+        /* 原生没有结束回调（addJavascriptInterface 传不了函数），
+           按文本长度估算一个「大约念完」的时间再解锁，够用且不会卡住后续播报。 */
+        const est=Math.max(1500, Math.min(12000, Math.round(whole.length*230/(TTS_RATE))));
+        if(_paySpeakTimer) clearTimeout(_paySpeakTimer);
+        _paySpeakTimer=setTimeout(function(){ _paySpeaking=false; }, est);
         return;
-      }catch(e){ /* 原生调用失败则继续走下面的网页逻辑 */ }
+      }catch(e){ _paySpeaking=false; /* 原生调用失败则继续走下面的网页逻辑 */ }
     }
 
     const synth=window.speechSynthesis;
@@ -5760,21 +5995,31 @@ function speakPay(txt){
       const u=new window.SpeechSynthesisUtterance(whole);
       if(voice){ u.voice=voice; }
       u.lang=(voice&&voice.lang)?String(voice.lang).replace('_','-'):'zh-CN';
-      u.rate=0.88; u.pitch=1.02; u.volume=1;
+      u.rate=TTS_RATE; u.pitch=TTS_PITCH; u.volume=1;
       /* 持有引用，避免被 GC 掉导致「看着在念其实没声」（旧 iOS 已知问题） */
       _payUtter=u;
-      u.onend=function(){ _payUtter=null; };
-      u.onerror=function(){ _payUtter=null; };
+      _paySpeaking=true;
+      u.onend=function(){ _payUtter=null; _paySpeaking=false; };
+      u.onerror=function(){ _payUtter=null; _paySpeaking=false; };
       synth.speak(u);
     };
     const vs=payVoiceList();
     if(vs&&vs.length){ doSpeak(); return; }
-    /* voice 列表还没就绪：等 voiceschanged（最多 800ms），届时再念；超过就先用默认音念 */
+    /* voice 列表还没就绪：等 voiceschanged（最多 1200ms）。
+       第 34 轮：等待期内**不抢先念默认音** —— 原来 800ms 到点先用默认音念一遍，
+       之后再被 voiceschanged 的音色覆盖，两句叠加正是「断裂/大小不一」的来源。
+       现在改为：拿到合适中文音色才念；始终拿不到才退化用默认音念一次。 */
     let done=false;
-    const fire=function(){ if(done) return; done=true; try{ synth.onvoiceschanged=null; }catch(e){} doSpeak(); };
-    try{ synth.onvoiceschanged=function(){ _payVoices=null; if(payVoiceList().length) fire(); }; }catch(e){}
+    const fire=function(forceDefault){
+      if(done) return;
+      if(!forceDefault && !pickZhVoice()) return;   /* 没拿到中文音色就继续等 */
+      done=true;
+      try{ synth.onvoiceschanged=null; }catch(e){}
+      doSpeak();
+    };
+    try{ synth.onvoiceschanged=function(){ _payVoices=null; fire(false); }; }catch(e){}
     if(_paySpeakTimer) clearTimeout(_paySpeakTimer);
-    _paySpeakTimer=setTimeout(fire, 800);
+    _paySpeakTimer=setTimeout(function(){ fire(true); }, 1200);
   }catch(e){}
 }
 let _payTimer=null;
@@ -5785,6 +6030,12 @@ function closePayNotice(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
   /* 第 32 轮：原生 TTS 也要停，否则关掉提示后还在念 */
   try{ const n=nativeTts(); if(n&&typeof n.stop==='function') n.stop(); }catch(e){}
+  /* 第 34 轮：关掉提示即解除播报占用，下一次提示能立刻正常起调（不残留 guard） */
+  try{
+    if(_paySpeakTimer){ clearTimeout(_paySpeakTimer); _paySpeakTimer=null; }
+    _paySpeaking=false; _payUtter=null;
+    _payLastText=''; _payLastAt=0;
+  }catch(e){}
   try{ syncMaybeApplyPending(); }catch(e){}
 }
 function buildPayNotice(amt){

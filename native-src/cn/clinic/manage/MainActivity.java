@@ -148,7 +148,7 @@ public class MainActivity extends BridgeActivity {
      * 暴露给 JS 的适配层。
      *
      * JS 侧用法：
-     *   window.NativeTTS.speak('请缴费 28 元，谢谢', '0.88', '1.02', 'zh-CN')
+     *   window.NativeTTS.speak('请缴费 28 元，谢谢', '0.82', '1.0', 'zh-CN')
      *   window.NativeTTS.stop()
      *   window.NativeTTS.isReady()      -> boolean
      *   window.NativeTTS.engineName()   -> string
@@ -164,7 +164,9 @@ public class MainActivity extends BridgeActivity {
 
         @android.webkit.JavascriptInterface
         public void speak(String text, String rate, String pitch, String lang) {
-            double r = 0.88, p = 1.02;
+            /* 第 34 轮：默认值与网页侧 TTS_RATE/TTS_PITCH 保持一致（0.82 / 1.0）。
+               0.88 偏快、1.02 偏尖，是「不清晰」的听感来源之一。 */
+            double r = 0.82, p = 1.0;
             try { if (rate != null && !rate.isEmpty()) r = Double.parseDouble(rate); } catch (Exception ignored) {}
             try { if (pitch != null && !pitch.isEmpty()) p = Double.parseDouble(pitch); } catch (Exception ignored) {}
             tts.speak(text, r, p, (lang == null || lang.isEmpty()) ? "zh-CN" : lang);

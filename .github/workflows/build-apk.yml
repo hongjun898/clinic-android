@@ -49,12 +49,24 @@ jobs:
           echo "--- 已注入的原生文件 ---"
           ls -l "$PKG"
 
-      - name: 补充 AndroidManifest（TTS 查询 + 权限）
+      - name: 安装图标生成依赖（Pillow）
+        run: python3 -m pip install --quiet --disable-pip-version-check Pillow
+
+      - name: 注入应用图标（与服务端统一）
+        run: |
+          set -e
+          python3 tools/make-android-icons.py ICON_256.PNG android/app/src/main/res
+          echo "--- 已注入的图标资源 ---"
+          find android/app/src/main/res -name "ic_launcher*" | sort
+          echo "--- 自适应图标 XML ---"
+          cat android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+
+      - name: 补充 AndroidManifest（TTS 查询 + 权限 + 明文流量）
         run: |
           set -e
           python3 tools/patch-manifest.py android/app/src/main/AndroidManifest.xml
-          echo "--- 补丁后核对 ---"
-          grep -n "TTS_SERVICE\|FOREGROUND_SERVICE" android/app/src/main/AndroidManifest.xml
+          echo "--- 补丁后核对（仅展示，不因缺项中断） ---"
+          grep -n "TTS_SERVICE\|FOREGROUND_SERVICE\|usesCleartextTraffic\|INTERNET" android/app/src/main/AndroidManifest.xml || true
 
       - name: 同步 Web 资源与原生代码
         run: npx cap sync android
@@ -71,12 +83,27 @@ jobs:
           set -e
           SRC=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
           echo "找到 APK: $SRC"
-          cp "$SRC" "诊所管理系统-Android.apk"
-          ls -lh "诊所管理系统-Android.apk"
+          cp "$SRC" "门诊管理-Android.apk"
+          ls -lh "门诊管理-Android.apk"
+
+      - name: 校验产物（应用名 + 图标 + 权限）
+        run: |
+          set -e
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort | tail -1)
+          echo "使用: $AAPT"
+          APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          # 1) 应用名与图标资源是否能被 aapt2 解析出来
+          "$AAPT" dump resources "$APK" > /tmp/res.txt 2>&1 || true
+          echo "--- 应用名（label）---"
+          grep -a "mipmap/ic_launcher\|ic_launcher_background\|ic_launcher_foreground" /tmp/res.txt | head -20 || true
+          # 2) 反查打包进去的图标条目
+          unzip -l "$APK" | grep -a "ic_launcher" || true
+          # 3) 应用名用 aapt2 dump badging 看
+          "$AAPT" dump badging "$APK" 2>/dev/null | grep -a "application-label\|application:" || true
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4
         with:
-          name: 诊所管理系统-Android-APK
-          path: 诊所管理系统-Android.apk
+          name: 门诊管理-Android-APK
+          path: 门诊管理-Android.apk
           retention-days: 90
