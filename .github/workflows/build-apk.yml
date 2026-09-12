@@ -55,26 +55,48 @@ jobs:
       - name: 注入应用图标（与服务端统一）
         run: |
           set -e
+          # 主闸门在 Python 脚本内部：它会读取 adaptive-icon XML，把其中每一个
+          # @drawable / @mipmap / @color 引用都在 res/ 下 glob 解析一遍，
+          # 任何一个解析不到就 exit 2（配合 set -e 直接失败）。这是最可靠的写法，
+          # 因为它不依赖任何 shell 命令语义，跨环境（GitHub / 本地 / 容器）结果一致。
           python3 tools/make-android-icons.py ICON_256.PNG android/app/src/main/res
-          echo "--- 已注入的图标资源 ---"
-          find android/app/src/main/res -name "ic_launcher*" | sort
+
+          echo "--- 已注入的图标资源（find 仅作展示，不影响判定）---"
+          find android/app/src/main/res -name "ic_launcher*" 2>/dev/null | sort || true
           echo "--- 自适应图标 XML ---"
           cat android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          # 硬闸门 1：前景图必须在 drawable-<dpi>/，与 XML 的 @drawable/ 引用对齐。
-          # 曾经误写进 mipmap-<dpi>/，AAPT2 解析不到 @drawable/ic_launcher_foreground
-          # → 自适应图标链接失败 → 桌面无图标。
-          test -f android/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png
-          echo "前景图位置正确（drawable-xxxhdpi/）"
-          # 硬闸门 2：mipmap-*/ 下不得残留前景图
-          if find android/app/src/main/res -path "*mipmap-*/ic_launcher_foreground.png" | grep -q .; then
-            echo "错误：mipmap-*/ 下存在 ic_launcher_foreground.png，@drawable/ 会解析失败"; exit 1
-          fi
-          # 硬闸门 3：传统图标 5 档齐全
+
+          # 下面的 shell 闸门是「双保险」，只用 POSIX 内建（test / [ ] / for），
+          # 不调用 find/grep/ls/head 等外部命令。
+          # ⚠️ 尤其禁止 `find ... | grep -q .`：GitHub Actions 默认 set -o pipefail，
+          #    无匹配时 grep 退出码 1 会让整条管道非 0，配合 set -e 直接中断 job
+          #    （表现为「闸门误报失败」，run #4 就栽在这里）。
+
+          echo "--- 硬闸门 1：前景图必须在 drawable-<dpi>/ ---"
+          # XML 引用的是 @drawable/ic_launcher_foreground；若落在 mipmap-<dpi>/，
+          # AAPT2 解析不到该资源 → 自适应图标链接失败 → 桌面无图标（真实事故）。
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-            test -f "android/app/src/main/res/mipmap-$d/ic_launcher.png" || { echo "缺少 mipmap-$d/ic_launcher.png"; exit 1; }
-            test -f "android/app/src/main/res/mipmap-$d/ic_launcher_round.png" || { echo "缺少 mipmap-$d/ic_launcher_round.png"; exit 1; }
+            test -f "android/app/src/main/res/drawable-$d/ic_launcher_foreground.png" \
+              || { echo "缺少 drawable-$d/ic_launcher_foreground.png"; exit 1; }
           done
-          echo "图标资源闸门全部通过"
+
+          echo "--- 硬闸门 2：mipmap-<dpi>/ 下不得残留前景图 ---"
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            if [ -f "android/app/src/main/res/mipmap-$d/ic_launcher_foreground.png" ]; then
+              echo "错误：mipmap-$d/ 下存在 ic_launcher_foreground.png，@drawable/ 会解析失败"
+              exit 1
+            fi
+          done
+
+          echo "--- 硬闸门 3：传统图标 5 档齐全 ---"
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            test -f "android/app/src/main/res/mipmap-$d/ic_launcher.png" \
+              || { echo "缺少 mipmap-$d/ic_launcher.png"; exit 1; }
+            test -f "android/app/src/main/res/mipmap-$d/ic_launcher_round.png" \
+              || { echo "缺少 mipmap-$d/ic_launcher_round.png"; exit 1; }
+          done
+
+          echo "图标资源闸门全部通过（0 处缺失 / 0 处错位）"
 
       - name: 补充 AndroidManifest（TTS 查询 + 权限 + 明文流量）
         run: |
