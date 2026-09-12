@@ -94,6 +94,35 @@ def ensure(d):
         os.makedirs(d)
 
 
+def purge_stale_foreground(res_dir):
+    """
+    删除 Capacitor 模板自带的、会造成资源歧义的前景图。
+
+    `npx cap add android` 生成的 res/ 里**本来就有**这两样东西：
+      · mipmap-<dpi>/ic_launcher_foreground.png   —— 模板默认的自适应前景
+      · drawable-v24/ic_launcher_foreground.xml   —— 模板默认的矢量前景
+
+    adaptive-icon XML 里写的是 `@drawable/ic_launcher_foreground`。Android 的资源
+    解析会在**所有同名 drawable/ 与 mipmap/ 候选**里按 dpi 择优匹配 —— 模板留下的
+    mipmap-<dpi>/ic_launcher_foreground.png 会参与竞争，把我们要用的
+    drawable-<dpi>/ic_launcher_foreground.png 挤掉，结果自适应图标链接到模板图，
+    启动器仍显示 Capacitor 默认图标（即用户看到的「图标不是我们的 / 图标丢失」）。
+
+    所以必须先把模板残留清干净，再写自己的。返回被删掉的路径列表（便于日志核对）。
+    """
+    removed = []
+    for pat in ("mipmap-*", "drawable-v24", "drawable", "drawable-night-*"):
+        for d in glob.glob(os.path.join(res_dir, pat)):
+            if not os.path.isdir(d):
+                continue
+            for ext in (".png", ".webp", ".xml", ".jpg", ".jpeg"):
+                p = os.path.join(d, "ic_launcher_foreground" + ext)
+                if os.path.isfile(p):
+                    os.remove(p)
+                    removed.append(p)
+    return removed
+
+
 def center_crop_square(im):
     """把任意长宽比的图裁成正方形（居中），避免非方图被拉伸变形。"""
     w, h = im.size
@@ -135,6 +164,16 @@ def main():
     src = Image.open(src_path).convert("RGBA")
     print("图标源: %s  尺寸 %s" % (src_path, src.size))
     src_sq = center_crop_square(src)
+
+    # 0) 先清掉 Capacitor 模板残留的前景图 —— 否则 @drawable/ 会被 mipmap-*/ 抢走，
+    #    自适应图标仍指向模板默认图（用户表现为「图标丢失 / 不是我们的图标」）。
+    stale = purge_stale_foreground(res_dir)
+    if stale:
+        print("--- 已清理 Capacitor 模板残留前景图 %d 个 ---" % len(stale))
+        for p in stale:
+            print("  rm %s" % p)
+    else:
+        print("--- 无模板残留前景图需要清理 ---")
 
     written = []
 
@@ -212,7 +251,35 @@ def main():
             print("    - " + e)
         return 2
 
+    # 6) 自检：确认没有「同名前景图」散落在 drawable/ 或 mipmap-*/ 里。
+    #    只要 mipmap-<dpi>/ 或 drawable-v24/ 下还留着 ic_launcher_foreground，
+    #    AAPT2 就可能匹配到它 → 自适应图标指向模板图 → 桌面无自定义图标。
+    #    这是真实事故（run #5）的根因，必须有闸门守住。
+    leftovers = []
+    for pat in ("mipmap-*", "drawable-v24", "drawable-night-*", "drawable"):
+        for d in glob.glob(os.path.join(res_dir, pat)):
+            if not os.path.isdir(d):
+                continue
+            for ext in (".png", ".webp", ".xml", ".jpg", ".jpeg"):
+                p = os.path.join(d, "ic_launcher_foreground" + ext)
+                if os.path.isfile(p):
+                    leftovers.append(p)
+    if leftovers:
+        print("!!! 自检失败：以下位置残留 ic_launcher_foreground，会与 @drawable/ 抢解析：")
+        for p in leftovers:
+            print("    - " + p)
+        return 3
+    # 前景图必须只存在于 drawable-<dpi>/
+    fg_dirs = sorted(os.path.dirname(p) for p in
+                     glob.glob(os.path.join(res_dir, "drawable-*", "ic_launcher_foreground.png")))
+    if len(fg_dirs) != len(ADAPTIVE_SIZES):
+        print("!!! 自检失败：drawable-<dpi>/ 前景图档数 %d != %d"
+              % (len(fg_dirs), len(ADAPTIVE_SIZES)))
+        print("    " + ", ".join(fg_dirs))
+        return 3
+
     print("资源引用自检通过：@color/@drawable/@mipmap 全部可解析")
+    print("前景图唯一性自检通过：仅存在于 drawable-<dpi>/（%d 档）" % len(fg_dirs))
     return 0
 
 

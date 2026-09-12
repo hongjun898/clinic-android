@@ -193,6 +193,58 @@ def main():
                         capture_output=True, text=True)
     truth("缺源图：返回非 0 且不崩溃", r3.returncode == 1)
 
+    # 9) 【关键回归】模拟 `npx cap add android` 之后的真实 res/ 状态：
+    #    Capacitor 模板自带 mipmap-<dpi>/ic_launcher_foreground.png 与
+    #    drawable-v24/ic_launcher_foreground.xml。生成脚本必须把它们**删掉**，
+    #    否则 @drawable/ic_launcher_foreground 会被模板图抢走解析
+    #    → 自适应图标仍指向 Capacitor 默认图 → 用户看到「图标丢失/不是自己的图标」。
+    #    （CI run #5 就是因为模板残留而失败的，这条断言守住它。）
+    res3 = os.path.join(tmp, "res_cap")
+    os.makedirs(res3)
+    # 复刻模板：mipmap 五档前景 + drawable 传统图标 + drawable-v24 矢量前景
+    for dpi in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
+        d = os.path.join(res3, "mipmap-" + dpi)
+        os.makedirs(d)
+        Image.new("RGBA", (48, 48), (0, 120, 255, 255)).save(
+            os.path.join(d, "ic_launcher_foreground.png"))
+        Image.new("RGBA", (48, 48), (0, 120, 255, 255)).save(
+            os.path.join(d, "ic_launcher.png"))
+    dv24 = os.path.join(res3, "drawable-v24")
+    os.makedirs(dv24)
+    open(os.path.join(dv24, "ic_launcher_foreground.xml"), "w", encoding="utf-8").write(
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"/>')
+    dpi_drawable = os.path.join(res3, "drawable")
+    os.makedirs(dpi_drawable)
+    open(os.path.join(dpi_drawable, "ic_launcher_background.xml"), "w", encoding="utf-8").write(
+        "<resources/>")
+
+    r4 = subprocess.run([sys.executable, GEN, ICON_SRC, res3],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    eq("模板态 res/：生成脚本退出码 = 0", r4.returncode, 0)
+    truth("模板态 res/：日志提示已清理模板残留",
+          "已清理 Capacitor 模板残留前景图" in (r4.stdout or ""),
+          (r4.stdout or "")[-300:])
+    for dpi in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
+        wp = os.path.join(res3, "mipmap-" + dpi, "ic_launcher_foreground.png")
+        truth("模板态 res/：mipmap-%s/ 模板前景图已被删除" % dpi, not os.path.exists(wp))
+    truth("模板态 res/：drawable-v24/ 模板矢量前景图已被删除",
+          not os.path.exists(os.path.join(dv24, "ic_launcher_foreground.xml")))
+    truth("模板态 res/：drawable-xxxhdpi/ 已写入我们的前景图",
+          os.path.exists(os.path.join(res3, "drawable-xxxhdpi", "ic_launcher_foreground.png")))
+    truth("模板态 res/：mipmap-xxxhdpi/ic_launcher.png 已替换为我们的（尺寸 192）",
+          Image.open(os.path.join(res3, "mipmap-xxxhdpi", "ic_launcher.png")).size == (192, 192))
+
+    # 反向：脚本自检必须能识别「人为塞回的残留」并返回非 0
+    #   —— 直接手工塞一个回去，然后单独跑一次生成（它自己会先清理，所以这里
+    #      改为验证「清理后无残留」这一事实由脚本自检覆盖：塞回去再跑，仍应 0 且被清掉）
+    with open(os.path.join(res3, "mipmap-mdpi", "ic_launcher_foreground.png"), "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\nSTALE")
+    r5 = subprocess.run([sys.executable, GEN, ICON_SRC, res3],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    eq("再次塞回残留：脚本仍成功且再次清理", r5.returncode, 0)
+    truth("再次塞回残留：已被再次删除",
+          not os.path.exists(os.path.join(res3, "mipmap-mdpi", "ic_launcher_foreground.png")))
+
     print("\n合计 %d 项：通过 %d，失败 %d" % (PASS + FAIL, PASS, FAIL))
     shutil.rmtree(tmp, ignore_errors=True)
     return 1 if FAIL else 0
