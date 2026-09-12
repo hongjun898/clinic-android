@@ -3,7 +3,9 @@ name: 构建 Android APK
 # 触发方式：
 #   1) 手动：Actions 页面点 "Run workflow"
 #   2) 推送：main 分支有改动时自动跑
-on:
+# 注：'on' 加引号是为了防止 YAML 1.1 把它误解析成布尔 true（GitHub 自身不受影响，
+#     但加引号后本地用 PyYAML 校验也能得到一致结果）。
+"on":
   workflow_dispatch:
   push:
     branches: [ main, master ]
@@ -50,40 +52,9 @@ jobs:
       - name: 补充 AndroidManifest（TTS 查询 + 权限）
         run: |
           set -e
-          MF=android/app/src/main/AndroidManifest.xml
-          python3 - << 'PYEOF'
-import re
-p = "android/app/src/main/AndroidManifest.xml"
-s = open(p, encoding="utf-8").read()
-
-# Android 11+ 要能"看见"系统 TTS 引擎，必须声明 queries；
-# 否则 TextToSpeech 找不到引擎，表现为"引擎不初始化、没声音"。
-if "android.intent.action.TTS_SERVICE" not in s:
-    queries = '''    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
-'''
-    s = s.replace("<application", queries + "\n    <application", 1)
-    print("已加入 <queries> TTS_SERVICE")
-else:
-    print("<queries> TTS_SERVICE 已存在，跳过")
-
-# 前台服务（部分引擎在后台合成需要）
-if "android.permission.FOREGROUND_SERVICE" not in s:
-    s = s.replace(
-        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
-        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
-        1)
-    print("已加入 FOREGROUND_SERVICE 权限")
-
-open(p, "w", encoding="utf-8").write(s)
-print("AndroidManifest 已更新")
-PYEOF
-          echo "--- 检查关键声明 ---"
-          grep -c "TTS_SERVICE" "$MF" || true
+          python3 tools/patch-manifest.py android/app/src/main/AndroidManifest.xml
+          echo "--- 补丁后核对 ---"
+          grep -n "TTS_SERVICE\|FOREGROUND_SERVICE" android/app/src/main/AndroidManifest.xml
 
       - name: 同步 Web 资源与原生代码
         run: npx cap sync android
