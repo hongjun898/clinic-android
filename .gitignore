@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+
+# Capacitor 生成的 Android 平台工程（由 CI 里的 `npx cap add android` 实时生成）
+android/
+
+# 构建产物
+www/*.map
+*.apk
+*.aab
+
+# 本地 Java 编译预检（JDK 有 190MB，本地自检用，不进仓库）
+.javacheck/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

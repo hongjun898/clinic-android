@@ -1,0 +1,15 @@
+{
+  "appId": "cn.clinic.manage",
+  "appName": "诊所管理系统",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#f5f6f8"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

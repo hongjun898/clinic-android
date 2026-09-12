@@ -1,0 +1,111 @@
+name: 构建 Android APK
+
+# 触发方式：
+#   1) 手动：Actions 页面点 "Run workflow"
+#   2) 推送：main 分支有改动时自动跑
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: 构建 APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: 配置 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 安装 Capacitor 依赖
+        run: npm install
+
+      - name: 生成 Android 平台工程
+        run: npx cap add android
+
+      - name: 注入原生 TTS 源码
+        run: |
+          set -e
+          PKG=android/app/src/main/java/cn/clinic/manage
+          mkdir -p "$PKG"
+          cp native-src/cn/clinic/manage/NativeTts.java     "$PKG/"
+          cp native-src/cn/clinic/manage/MainActivity.java  "$PKG/"
+          echo "--- 已注入的原生文件 ---"
+          ls -l "$PKG"
+
+      - name: 补充 AndroidManifest（TTS 查询 + 权限）
+        run: |
+          set -e
+          MF=android/app/src/main/AndroidManifest.xml
+          python3 - << 'PYEOF'
+import re
+p = "android/app/src/main/AndroidManifest.xml"
+s = open(p, encoding="utf-8").read()
+
+# Android 11+ 要能"看见"系统 TTS 引擎，必须声明 queries；
+# 否则 TextToSpeech 找不到引擎，表现为"引擎不初始化、没声音"。
+if "android.intent.action.TTS_SERVICE" not in s:
+    queries = '''    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+'''
+    s = s.replace("<application", queries + "\n    <application", 1)
+    print("已加入 <queries> TTS_SERVICE")
+else:
+    print("<queries> TTS_SERVICE 已存在，跳过")
+
+# 前台服务（部分引擎在后台合成需要）
+if "android.permission.FOREGROUND_SERVICE" not in s:
+    s = s.replace(
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+        1)
+    print("已加入 FOREGROUND_SERVICE 权限")
+
+open(p, "w", encoding="utf-8").write(s)
+print("AndroidManifest 已更新")
+PYEOF
+          echo "--- 检查关键声明 ---"
+          grep -c "TTS_SERVICE" "$MF" || true
+
+      - name: 同步 Web 资源与原生代码
+        run: npx cap sync android
+
+      - name: 授予 gradlew 执行权限
+        run: chmod +x android/gradlew
+
+      - name: 构建 Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: 重命名 APK
+        run: |
+          set -e
+          SRC=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          echo "找到 APK: $SRC"
+          cp "$SRC" "诊所管理系统-Android.apk"
+          ls -lh "诊所管理系统-Android.apk"
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 诊所管理系统-Android-APK
+          path: 诊所管理系统-Android.apk
+          retention-days: 90
