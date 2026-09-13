@@ -196,6 +196,22 @@ def main():
     check("主闸门交给 Python 自检（make-android-icons.py 内部 exit 2）",
           "python3 tools/make-android-icons.py" in code)
 
+    # 第 38 轮新增：Python 自检里的「前景几何」闸门（图标必须撑满 66dp 安全圆，exit 4）。
+    # 这条闸门防的是「图标又变小」的回归 —— 用户实测反馈过「图标太小」，
+    # 若把 FOREGROUND_SCALE 改小或忘了裁源图留白，必须让 CI 直接变红。
+    gen = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "tools", "make-android-icons.py")
+    gen_src = open(gen, encoding="utf-8").read()
+    check("生成脚本含前景几何自检（撑满安全圆）",
+          "前景几何自检" in gen_src and "safe_r" in gen_src)
+    check("生成脚本几何自检失败返回 4",
+          "return 4" in gen_src)
+    check("缩放系数不再含已证伪的角距修正 _WORST_CORNER_RATIO",
+          "_WORST_CORNER_RATIO" not in gen_src.replace("_WORST_CORNER_RATIO =", "") or
+          "1.2264" not in gen_src)
+    check("生成脚本会裁掉源图透明留白（trim_alpha_padding）",
+          "trim_alpha_padding" in gen_src and "src_content" in gen_src)
+
     # 反向：全文件（去掉注释后）不得残留 pipefail 陷阱写法
     yml_code = "\n".join(
         ln for ln in yml.splitlines() if not ln.strip().startswith("#")
