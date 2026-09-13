@@ -47,14 +47,32 @@ LEGACY_SIZES = {
 
 # 自适应图标画布 108dp，系统只保证中心 66dp 圆内完整可见（66/108 = 0.6111）。
 #
-# ⚠️ 缩放系数不是拍脑袋定的，必须按**源图实体的外接半径**反算：
-#   源图 ICON_256.PNG 的徽章是近乎满幅的圆角方块（bbox 17..239），
-#   四角离画布中心 156.98px，而源图半宽只有 128px —— 即外接半径是半宽的 1.227 倍。
-#   若按「占画布 61%」直接缩放，四角会落在 66dp 安全圆之外，被启动器裁掉。
-#   正确做法：先算安全半径能容纳的源图占比，再乘一个留白系数（0.92）留点余量。
-_SAFE_FRACTION = 66.0 / 108.0          # 0.6111，系统保证可见的直径占比
-_WORST_CORNER_RATIO = 156.98 / 128.0   # 1.2264，源图最远角距 ÷ 源图半宽
-FOREGROUND_SCALE = _SAFE_FRACTION / _WORST_CORNER_RATIO * 0.92  # ≈ 0.4584
+# ⚠️ 缩放系数必须按**源图实体的外接半径**反算，不能拍脑袋 —— 但也**不能凭空假设**
+#    源图有方角。第 35/37 轮曾把源图当成「近乎满幅的圆角方块」，
+#    于是除了一个 `_WORST_CORNER_RATIO = 1.2264`（= 假想角距 ÷ 半宽），
+#    得到 0.4584 —— 图标因此只有安全圆的 ~2/3 大，用户反馈「图标太小」。
+#
+#    第 38 轮**实测** ICON_256.PNG（256×256）的 alpha 通道：
+#      · alpha bbox = (15,15,241,241)，圆心在 (128,128)；
+#      · 沿 +x / -x / +y / -y 四个方向的单侧半径均 ≈ 111~112px；
+#      · 逐行半宽 vs `sqrt(R² - dy²)` 最大偏差仅 -2.79px（256px 画布上的 1.1%，系抗锯齿）；
+#      · 宽度随 y 单调平滑变化（y=32→112、y=128→222、y=224→108），不存在「方角平台」。
+#    ⇒ **源图本身就是正圆**，四个角全部落在圆外且本来就是透明的，
+#      根本不存在「四角被安全圆裁掉」的问题，那个 1.2264 是在防守一个不存在的风险。
+#
+#    正确算法（用户选定口径：**圆边正好顶到 66dp 安全圆**）：
+#      ① 先按 alpha 通道**裁掉源图自带的透明留白** —— ICON_256.PNG 的圆只占画布的 87.1%
+#         （bbox 15..241，内容外接半径 111.5px / 半宽 128px），四周有 15px 空白；
+#         不裁的话圆永远够不到安全圆，怎么调 FOREGROUND_SCALE 都偏小。
+#      ② 再把「裁后内容」等比缩放到安全圆直径 66dp → 即 FOREGROUND_SCALE 应用的
+#         对象是**内容边长**而非画布边长。
+#      ③ 留 1% 抗锯齿余量，避免圆边缘被安全圆削掉一圈。
+_SAFE_FRACTION = 66.0 / 108.0   # 0.6111，系统保证可见的直径占比
+_AA_MARGIN = 0.99               # 抗锯齿余量：圆边收进安全圆内 1%
+FOREGROUND_SCALE = _SAFE_FRACTION * _AA_MARGIN   # ≈ 0.605，作用于**裁掉留白后的内容**
+
+# 兼容旧引用的别名（历史版本里这个常量表示「作用于整张源画布」的系数）
+_CANVAS_SCALE_LEGACY = 0.4584
 
 ADAPTIVE_SIZES = {
     "mdpi": 108,
@@ -134,11 +152,41 @@ def center_crop_square(im):
     return im.crop((left, top, left + side, top + side))
 
 
-def make_foreground(src_sq, size):
-    """生成自适应前景：透明画布 + 居中等比缩放的图标本体。"""
+def trim_alpha_padding(im, thresh=8):
+    """
+    裁掉源图四周的透明留白，只留真实不透明内容的正方形外接框。
+
+    为什么必须裁：ICON_256.PNG 的圆形徽章只占 256 画布的 87.1%（bbox 15..241），
+    四周有 15px 空白。自适应图标前景的缩放系数是按「内容要顶到 66dp 安全圆」算的，
+    若对**整张含留白的画布**缩放，圆的直径永远比安全圆小 13% —— 图标显小
+    （用户第 38 轮反馈「图标太小」的几何原因之一）。
+    """
+    a = im.split()[3]
+    bbox = a.point(lambda v: 255 if v > thresh else 0).getbbox()
+    if not bbox:
+        return im
+    x0, y0, x1, y1 = bbox
+    # 取正方形外接框（内容已居中，取最大边长即可保住圆形不变形）
+    side = max(x1 - x0, y1 - y0)
+    cx = (x0 + x1) / 2.0
+    cy = (y0 + y1) / 2.0
+    left = int(round(cx - side / 2.0))
+    top = int(round(cy - side / 2.0))
+    # 允许越界时补透明，避免 crop 出界报错
+    if left < 0 or top < 0 or left + side > im.size[0] or top + side > im.size[1]:
+        canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+        canvas.paste(im.crop((max(0, left), max(0, top),
+                              min(im.size[0], left + side), min(im.size[1], top + side))),
+                     (max(0, -left), max(0, -top)))
+        return canvas
+    return im.crop((left, top, left + side, top + side))
+
+
+def make_foreground(src_content, size):
+    """生成自适应前景：透明画布 + 居中等比缩放的图标本体（已去留白）。"""
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     inner = max(1, int(round(size * FOREGROUND_SCALE)))
-    logo = src_sq.resize((inner, inner), Image.LANCZOS)
+    logo = src_content.resize((inner, inner), Image.LANCZOS)
     off = (size - inner) // 2
     canvas.paste(logo, (off, off), logo)
     return canvas
@@ -164,6 +212,12 @@ def main():
     src = Image.open(src_path).convert("RGBA")
     print("图标源: %s  尺寸 %s" % (src_path, src.size))
     src_sq = center_crop_square(src)
+    # 去留白版本：专供自适应前景（让圆边能顶到 66dp 安全圆）
+    src_content = trim_alpha_padding(src_sq)
+    if src_content.size != src_sq.size:
+        print("已裁掉源图透明留白：%s -> %s（内容占比 %.1f%%）"
+              % (src_sq.size, src_content.size,
+                 src_content.size[0] / float(src_sq.size[0]) * 100))
 
     # 0) 先清掉 Capacitor 模板残留的前景图 —— 否则 @drawable/ 会被 mipmap-*/ 抢走，
     #    自适应图标仍指向模板默认图（用户表现为「图标丢失 / 不是我们的图标」）。
@@ -196,7 +250,7 @@ def main():
         d = os.path.join(res_dir, "drawable-" + dpi)
         ensure(d)
         p = os.path.join(d, "ic_launcher_foreground.png")
-        make_foreground(src_sq, size).save(p, optimize=True)
+        make_foreground(src_content, size).save(p, optimize=True)
         written.append(p)
 
     # 3) 自适应图标描述
@@ -280,6 +334,35 @@ def main():
 
     print("资源引用自检通过：@color/@drawable/@mipmap 全部可解析")
     print("前景图唯一性自检通过：仅存在于 drawable-<dpi>/（%d 档）" % len(fg_dirs))
+
+    # 7) 自检：前景里**真实不透明像素**必须顶到 66dp 安全圆附近。
+    #    第 38 轮事故：旧系数 0.4584 只让圆占到安全圆的 65% → 用户看到「图标太小」。
+    #    这里用「最远不透明像素距圆心」实测（不能拿 bbox 四角量 —— 圆图四角本就透明）。
+    probe = os.path.join(res_dir, "drawable-xxxhdpi", "ic_launcher_foreground.png")
+    if os.path.isfile(probe):
+        fg = Image.open(probe).convert("RGBA")
+        S = fg.size[0]
+        pxa = fg.load()
+        cx = cy = S / 2.0
+        worst = 0.0
+        box = fg.getbbox()
+        if box:
+            for y in range(box[1], box[3]):
+                for x in range(box[0], box[2]):
+                    if pxa[x, y][3] > 8:
+                        dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+                        if dist > worst:
+                            worst = dist
+        safe_r = S * (66.0 / 108.0) / 2.0
+        ratio = worst / safe_r if safe_r else 0
+        print("前景几何自检：可见半径 %.1f / 安全半径 %.1f = %.1f%%" % (worst, safe_r, ratio * 100))
+        if worst > safe_r + 1.0:
+            print("!!! 自检失败：可见图形超出 66dp 安全圆，会被启动器裁边")
+            return 4
+        if ratio < 0.95:
+            print("!!! 自检失败：可见图形只占安全圆 %.1f%%（<95%），图标会显小" % (ratio * 100))
+            return 4
+        print("前景几何自检通过：可见图形撑满安全圆（%.1f%%）" % (ratio * 100))
     return 0
 
 

@@ -75,6 +75,10 @@ input,select,textarea{outline:none}
 .pat-pick.sel{border-color:var(--primary);background:var(--primary-soft)}
 .click-card{cursor:pointer}
 .click-card:hover{border-color:var(--primary)}
+/* 首页提醒卡片内的单行条目：可单独点击 → 直达该药品详情（外层卡片点击 → 打开列表弹窗） */
+.home-alert-row{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;border-radius:6px;transition:background .15s}
+.home-alert-row:hover{background:var(--primary-soft)}
+.home-alert-row:last-child{border-bottom:0}
 .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
 .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
 .bg-blue{background:var(--primary-soft);color:var(--primary)}
@@ -614,7 +618,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.3 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.20 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -846,7 +850,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.3 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.20 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -2648,7 +2652,7 @@ function renderHome(){
   const low=lowStockBatches();
   const sc=document.getElementById('stock-alert-card');
   if(low.length && !dis.stock){ sc.style.display='block'; sc.classList.add('click-card'); sc.onclick=function(){ openLowStockList(); };
-    document.getElementById('stock-alerts').innerHTML=low.slice(0,6).map(function(o){ return '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>'+escapeHtml(o.d.name)+'</b><span style="float:right;color:var(--danger);font-weight:700">剩'+fmtQty(o.b.qty)+o.d.unit+'</span></div>'; }).join('')+
+    document.getElementById('stock-alerts').innerHTML=low.slice(0,6).map(function(o){ return '<div class="home-alert-row" onclick="event.stopPropagation();openLowStockDetail(\''+o.d.id+'\')"><b>'+escapeHtml(o.d.name)+'</b><span style="float:right;color:var(--danger);font-weight:700">剩'+fmtQty(o.b.qty)+o.d.unit+'</span></div>'; }).join('')+
     (low.length>6?'<div style="padding-top:8px;font-size:12px;color:var(--primary)">查看全部 '+low.length+' 个批次 →</div>':'')+
     '<div style="padding-top:10px;text-align:right"><button class="alert-dismiss" onclick="event.stopPropagation();dismissHomeAlert(\'stock\')">我知道了</button></div>'; }
   else { sc.style.display='none'; }
@@ -2656,7 +2660,7 @@ function renderHome(){
   const ex=[]; Store.data.drugs.forEach(function(d){ d.batches.forEach(function(b){ if(!batchHasStock(b)) return; const st=expStatus(b.expDate); if(st) ex.push({d:d,b:b,st:st}); }); });
   const ec=document.getElementById('exp-alert-card');
   if(ex.length && !dis.exp){ ec.style.display='block'; ec.classList.add('click-card'); ec.onclick=function(){ openExpList(); };
-    document.getElementById('exp-alerts').innerHTML=ex.sort(function(a,b){ return a.b.expDate.localeCompare(b.b.expDate); }).slice(0,6).map(function(o){ return '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><b>'+escapeHtml(o.d.name)+'</b><span class="status status-'+o.st.cls+'" style="float:right">'+o.st.label+'</span></div>'; }).join('')+
+    document.getElementById('exp-alerts').innerHTML=ex.sort(function(a,b){ return a.b.expDate.localeCompare(b.b.expDate); }).slice(0,6).map(function(o){ return '<div class="home-alert-row" onclick="event.stopPropagation();openExpDetail(\''+o.d.id+'\')"><b>'+escapeHtml(o.d.name)+'</b><span class="status status-'+o.st.cls+'" style="float:right">'+o.st.label+'</span></div>'; }).join('')+
     (ex.length>6?'<div style="padding-top:8px;font-size:12px;color:var(--primary)">查看全部 '+ex.length+' 个批次 →</div>':'')+
     '<div style="padding-top:10px;text-align:right"><button class="alert-dismiss" onclick="event.stopPropagation();dismissHomeAlert(\'exp\')">我知道了</button></div>'; }
   else { ec.style.display='none'; }
@@ -2687,18 +2691,32 @@ window.openLowStockList=function(){
   const thr=lowStockThreshold(), on=lowStockActive();
   const low=lowStockBatches();
   low.sort(function(a,b){ return Number(a.b.qty)-Number(b.b.qty); });
+  /* 每行可点击 → 直达药品详情；行内另有「编辑」按钮 → 进药品编辑。
+     点弹窗内按钮后先关 Modal 再跳转，避免遮罩叠在详情弹窗上。 */
   Modal.open('库存预警批次（≤'+(on?thr:'已关闭')+'）',
-    (on&&low.length)?('<table class="data-table"><thead><tr><th>药品</th><th>规格</th><th>批号</th><th style="text-align:right">库存</th></tr></thead><tbody>'+
-      low.map(function(o){ return '<tr><td>'+escapeHtml(o.d.name)+'</td><td>'+escapeHtml(o.d.spec||'-')+'</td><td class="mono">'+escapeHtml(o.b.batchNo||'-')+'</td><td style="text-align:right;color:var(--danger);font-weight:700">'+fmtQty(o.b.qty)+(o.d.unit||'')+'</td></tr>'; }).join('')+'</tbody></table>')
+    (on&&low.length)?('<table class="data-table"><thead><tr><th>药品</th><th>规格</th><th>批号</th><th style="text-align:right">库存</th><th>操作</th></tr></thead><tbody>'+
+      low.map(function(o){ return '<tr style="cursor:pointer" onclick="openLowStockDetail(\''+o.d.id+'\')">'+
+        '<td>'+escapeHtml(o.d.name)+'</td><td>'+escapeHtml(o.d.spec||'-')+'</td><td class="mono">'+escapeHtml(o.b.batchNo||'-')+'</td>'+
+        '<td style="text-align:right;color:var(--danger);font-weight:700">'+fmtQty(o.b.qty)+(o.d.unit||'')+'</td>'+
+        '<td><div class="td-actions"><button onclick="event.stopPropagation();openLowStockDetail(\''+o.d.id+'\')">详情</button><button onclick="event.stopPropagation();openLowStockEdit(\''+o.d.id+'\')">编辑</button></div></td></tr>'; }).join('')+'</tbody></table>')
       :(on?'<div class="empty">当前没有库存预警批次</div>':'<div class="empty">库存预警功能已在「系统设置 → 阈值设置」中关闭</div>'),
     '<button class="btn btn-secondary" onclick="Modal.close()">关闭</button><button class="btn btn-primary" onclick="Modal.close();showPage(\'drugs\')">去药品库存</button>');
 };
+/* 弹窗内的跳转入口（挂到 window 供内联 onclick 调用） */
+window.openLowStockDetail=function(id){ Modal.close(); openDrugDetail(id); };
+window.openLowStockEdit=function(id){ Modal.close(); openDrugEditor(id); };
+window.openExpDetail=function(id){ Modal.close(); openDrugDetail(id); };
+window.openExpEdit=function(id){ Modal.close(); openDrugEditor(id); };
 window.openExpList=function(){
   const ex=[]; Store.data.drugs.forEach(function(d){ d.batches.forEach(function(b){ if(!batchHasStock(b)) return; const st=expStatus(b.expDate); if(st) ex.push({d:d,b:b,st:st}); }); });
   ex.sort(function(a,b){ return String(a.b.expDate||'').localeCompare(String(b.b.expDate||'')); });
+  /* 同上：行可点击 → 药品详情；行内「编辑」→ 药品编辑 */
   Modal.open('近效期 / 过期批次',
-    ex.length?('<table class="data-table"><thead><tr><th>药品</th><th>批号</th><th>有效期至</th><th>状态</th></tr></thead><tbody>'+
-      ex.map(function(o){ return '<tr><td>'+escapeHtml(o.d.name)+'</td><td class="mono">'+escapeHtml(o.b.batchNo||'-')+'</td><td class="mono">'+escapeHtml(o.b.expDate||'-')+'</td><td><span class="status status-'+o.st.cls+'">'+o.st.label+'</span></td></tr>'; }).join('')+'</tbody></table>')
+    ex.length?('<table class="data-table"><thead><tr><th>药品</th><th>批号</th><th>有效期至</th><th>状态</th><th>操作</th></tr></thead><tbody>'+
+      ex.map(function(o){ return '<tr style="cursor:pointer" onclick="openExpDetail(\''+o.d.id+'\')">'+
+        '<td>'+escapeHtml(o.d.name)+'</td><td class="mono">'+escapeHtml(o.b.batchNo||'-')+'</td><td class="mono">'+escapeHtml(o.b.expDate||'-')+'</td>'+
+        '<td><span class="status status-'+o.st.cls+'">'+o.st.label+'</span></td>'+
+        '<td><div class="td-actions"><button onclick="event.stopPropagation();openExpDetail(\''+o.d.id+'\')">详情</button><button onclick="event.stopPropagation();openExpEdit(\''+o.d.id+'\')">编辑</button></div></td></tr>'; }).join('')+'</tbody></table>')
       :'<div class="empty">当前没有近效期或过期批次</div>',
     '<button class="btn btn-secondary" onclick="Modal.close()">关闭</button><button class="btn btn-primary" onclick="Modal.close();showPage(\'drugs\')">去药品库存</button>');
 };
@@ -2855,8 +2873,15 @@ function drugOptions(){
 }
 let drugTimer=null;
 /* 药品列表页顶部效期提醒：按药品（非批次）统计 过期 / 近效期，并提供一键清理 */
+/* 药品列表页顶部效期提醒：按药品（非批次）统计 过期 / 近效期，并提供一键清理。
+   ⚠️ 第 38 轮：用户要求「隐藏药品库存中的效期提醒」——库存页顶部的汇总提醒条不再展示
+   （改由首页「近效期 / 过期」卡片承载，且每行药品自身的效期标记照常保留）。
+   这里保留函数与 DOM 挂点，只由 SHOW_DRUG_EXP_ALERT 开关控制渲染，
+   便于将来一键恢复，也避免删函数牵连既有测试脚本的沙箱依赖。 */
+var SHOW_DRUG_EXP_ALERT=false;
 function renderDrugExpAlert(){
   const el=document.getElementById('drug-alert'); if(!el) return;
+  if(!SHOW_DRUG_EXP_ALERT){ el.innerHTML=''; el.style.display='none'; return; }
   const days=Number(Store.data.cfg&&Store.data.cfg.expireDays)||120;
   const t0=new Date(); t0.setHours(0,0,0,0); const todayMs=t0.getTime();
   let expired=0, near=0;
@@ -2905,6 +2930,13 @@ function renderDrugs(){
     return '<td class="price-cell '+cls+'">'+fmtMoney(v)+(u&&u!==mainUnit?'<span class="p-unit">/'+escapeHtml(u)+'</span>':'')+'</td>';
   };
   const view=renderView();
+  /* ⚠️ 移动端（≤768px）只渲染卡片侧，表格侧不再重写。
+     如果不在这里主动清掉表格侧的**上一次**内容，就会出现：
+     先搜不存在的药 → 两侧都写上「未找到匹配药品」→ 再搜存在的药 →
+     卡片侧被重写为正常结果，表格侧却仍留着那句空提示（用户看到提示不消失，
+     必须刷新或重开 App 才恢复）。所以两侧都必须在本轮渲染开头清干净。 */
+  if(!view.table) document.getElementById('drug-table-wrap').innerHTML='';
+  if(!view.cards) document.getElementById('drug-cards-wrap').innerHTML='';
   let rowHtml='';
   if(view.table){
   list.forEach(function(d){

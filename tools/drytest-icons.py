@@ -12,11 +12,15 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GEN = os.path.join(HERE, "make-android-icons.py")
-ICON_SRC = sys.argv[1] if len(sys.argv) > 1 else r"D:\WinRAR\WorkBuddy\.workbuddy\fnpack\clinic\ICON_256.PNG"
+ICON_SRC = sys.argv[1] if len(sys.argv) > 1 else r"D:\WinRAR\WorkBuddy\.workbuddy\android-tts\ICON_256.PNG"
+if not os.path.exists(ICON_SRC):
+    _alt = r"D:\WinRAR\WorkBuddy\.workbuddy\fnpack\clinic\ICON_256.PNG"
+    if os.path.exists(_alt):
+        ICON_SRC = _alt
 
 PASS = 0
 FAIL = 0
@@ -130,23 +134,38 @@ def main():
     truth("前景存在不透明内容", bbox is not None, str(bbox))
     if bbox:
         # 安全区：自适应图标 108dp 画布中，系统只保证中心 66dp 圆内完整可见
-        # 66/108 = 0.6111 -> 半径 = S * 0.3056，圆心 = S/2
-        # 断言口径：**可见图形的四个角**都要落在安全圆内（画布四角本来就是透明的，不算数）
-        safe_r = S * 0.3056
+        # 66/108 = 0.6111 -> 半径 = S * 0.30555
+        #
+        # ⚠️ 断言口径必须是「**真实不透明像素**到圆心的最大距离」，不能拿 bbox 四角去量：
+        #    源图本身是正圆（第 38 轮实测，见 make-android-icons.py 注释），
+        #    bbox 四角全部落在圆外、本来就是 alpha=0 的透明区。
+        #    拿 bbox 四角算距离 = √2·r，会得出「超出安全圆」的**假失败**，
+        #    正是这个错误口径逼着上一版把图标缩到 0.4584 → 用户反馈「图标太小」。
+        safe_r = S * (66.0 / 108.0) / 2.0
         cx = cy = S / 2.0
-        corners = [(bbox[0], bbox[1]), (bbox[2] - 1, bbox[1]),
-                   (bbox[0], bbox[3] - 1), (bbox[2] - 1, bbox[3] - 1)]
         worst = 0.0
-        for (x, y) in corners:
-            worst = max(worst, math.hypot(x - cx, y - cy))
-        truth("可见图形四角落在 66dp 安全圆内（圆形遮罩不会裁掉）",
+        for y in range(bbox[1], bbox[3]):
+            for x in range(bbox[0], bbox[2]):
+                if px[x, y][3] > 8:                      # 只统计真正可见的像素
+                    d = math.hypot(x - cx, y - cy)
+                    if d > worst:
+                        worst = d
+        truth("可见图形所有不透明像素落在 66dp 安全圆内（圆形遮罩不会裁掉）",
               worst <= safe_r + 1.0,
-              "最远角距=%.1f 安全半径=%.1f" % (worst, safe_r))
-        # 也不能缩太小：可见图形应占到安全圆的合理比例（≥80% 直径），否则图标显小
-        vis_diag = math.hypot(bbox[2] - bbox[0], bbox[3] - bbox[1])
-        truth("可见图形不过小（对角线 ≥ 安全直径的 70%）",
-              vis_diag >= safe_r * 2 * 0.70,
-              "可见对角线=%.1f 安全直径=%.1f" % (vis_diag, safe_r * 2))
+              "最远不透明像素距圆心=%.1f 安全半径=%.1f" % (worst, safe_r))
+        # 也不能缩太小：可见图形的**外接直径**应基本撑满安全圆（≥95%），否则图标显小
+        vis_r = max(worst, 1.0)
+        truth("可见图形撑满安全圆（外接直径 ≥ 安全直径的 95%，防图标偏小回归）",
+              vis_r >= safe_r * 0.95,
+              "可见半径=%.1f 安全半径=%.1f 占比=%.1f%%" % (vis_r, safe_r, vis_r / safe_r * 100))
+        # 圆度断言：源图是正圆，前景里可见区域也应是圆——用「面积 ≈ π r²」反查，
+        # 防止误把方角图塞进来（方角在 66dp 圆遮罩下会被切角）。
+        opq = sum(1 for y in range(bbox[1], bbox[3]) for x in range(bbox[0], bbox[2])
+                  if px[x, y][3] > 8)
+        area_circle = math.pi * vis_r * vis_r
+        truth("可见区域形状接近正圆（面积/πr² ∈ [0.88, 1.12]）",
+              abs(opq / area_circle - 1.0) <= 0.12,
+              "实测面积=%d πr²=%.0f 比值=%.3f" % (opq, area_circle, opq / area_circle))
 
     # 4) 自适应 XML 引用正确
     for fn in ("ic_launcher.xml", "ic_launcher_round.xml"):
@@ -178,8 +197,12 @@ def main():
     eq("重复执行幂等（同尺寸图标字节一致）", len(b2), len(b1))
 
     # 7) 非正方形源图也能处理（居中裁剪成方）
+    #    ⚠️ 必须用**圆形**内容而非实心方块：生成脚本第 7 项自检会拒绝「方角图」
+    #       （方角在 66dp 圆形遮罩下会被切角，且说明源图不是我们的正圆徽章）。
     sq = os.path.join(tmp, "wide.png")
-    Image.new("RGBA", (400, 200), (200, 30, 30, 255)).save(sq)
+    wide = Image.new("RGBA", (400, 200), (0, 0, 0, 0))
+    ImageDraw.Draw(wide).ellipse((100, 0, 300, 200), fill=(200, 30, 30, 255))
+    wide.save(sq)
     res2 = os.path.join(tmp, "res2")
     os.makedirs(res2)
     r2 = subprocess.run([sys.executable, GEN, sq, res2],
@@ -187,6 +210,19 @@ def main():
     eq("非方图源：脚本仍成功", r2.returncode, 0)
     p2 = os.path.join(res2, "mipmap-hdpi", "ic_launcher.png")
     truth("非方图源：产物为正方形", os.path.exists(p2) and Image.open(p2).size == (72, 72))
+
+    # 7b) 【新回归】必须拒绝「方角源图」—— 方角在圆形遮罩下会被切角，
+    #     且会暴露「源图不再是我们的正圆徽章」这一事实。
+    san = os.path.join(tmp, "square.png")
+    Image.new("RGBA", (256, 256), (200, 30, 30, 255)).save(san)
+    res4 = os.path.join(tmp, "res_sq")
+    os.makedirs(res4)
+    r6 = subprocess.run([sys.executable, GEN, san, res4],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    eq("方角源图：脚本拒绝（返回 4）", r6.returncode, 4)
+    truth("方角源图：日志点明「撑满/安全圆」问题",
+          ("安全圆" in (r6.stdout or "")) or ("显小" in (r6.stdout or "")),
+          (r6.stdout or "")[-300:])
 
     # 8) 缺源图时优雅失败
     r3 = subprocess.run([sys.executable, GEN, os.path.join(tmp, "nope.png"), res2],
