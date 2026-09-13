@@ -282,6 +282,17 @@ input,select,textarea{outline:none}
 .field-row.three-col{flex-wrap:wrap}
 .field-row.three-col .field{min-width:calc(33.333% - 10px)}
 .field-hint{font-size:12px;color:var(--text-tertiary);margin-top:4px}
+/* 第 39 轮：内建诊断库管理（手动添加的自定义诊断列表） */
+.diag-custom-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;min-height:30px;align-items:flex-start}
+.diag-custom-list .diag-chip{display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);
+  border:1px solid rgba(37,99,235,.22);border-radius:999px;padding:4px 6px 4px 11px;font-size:13px;line-height:1.5;max-width:100%}
+.diag-custom-list .diag-chip b{font-weight:600;word-break:break-all}
+.diag-custom-list .diag-chip .dc-src{font-size:11px;color:var(--text-tertiary);background:rgba(255,255,255,.7);
+  border-radius:999px;padding:1px 6px;white-space:nowrap}
+.diag-custom-list .diag-chip button{border:0;background:transparent;color:var(--primary);cursor:pointer;
+  font-size:15px;line-height:1;padding:2px 4px;border-radius:999px;opacity:.72}
+.diag-custom-list .diag-chip button:hover{opacity:1;background:rgba(37,99,235,.14)}
+.diag-custom-list .empty{font-size:12px;color:var(--text-tertiary)}
 /* 年月日三下拉日期选择 */
 .date3{display:flex;gap:6px;align-items:center}
 .date3 select{flex:1;padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:14px;color:var(--text);min-width:0}
@@ -618,7 +629,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.20 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.21 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -768,6 +779,23 @@ input,select,textarea{outline:none}
               <div class="field-hint" data-page-node-id="pL4uK2bIyjKuEvrZ5cH8RU">过期批次红色、近效期橙色、库存低于阈值红色高亮。阈值可填 <b>0</b>（此时不再预警任何「有库存但偏低」的批次）；如需彻底关闭预警请用下方开关</div>
               <div class="switch-row" data-page-node-id="lowSwitchRow01"><div><div class="switch-row-title">库存预警</div><div class="switch-row-sub">关闭后首页不再显示库存预警，药品列表也不再红色高亮</div></div><div class="switch on" id="low-switch" data-page-node-id="lowSwitchBtn01"></div></div>
             </div>
+            <div class="section-card" id="diag-lib-card">
+              <div class="section-head"><h3>内建诊断库</h3><span class="more" id="diag-lib-count"></span></div>
+              <div class="field-row">
+                <div class="field"><label>诊断名称</label><input id="diag-add-name" placeholder="如：腰椎管狭窄症" maxlength="40"></div>
+                <div class="field"><label>ICD-10 编码（可选）</label><input id="diag-add-code" placeholder="如：M48.0" maxlength="12"></div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-sm btn-primary" type="button" id="diag-add-btn">＋ 添加诊断</button>
+                <button class="btn btn-sm btn-secondary" type="button" id="diag-clear-added">清空「手动添加」记录</button>
+                <span class="field-hint" style="margin:0" id="diag-add-hint"></span>
+              </div>
+              <div class="field" style="margin-top:12px"><label>手动添加的诊断</label>
+                <div id="diag-custom-list" class="diag-custom-list"></div>
+                <div class="field-hint">开处方时若填写了库中没有的诊断，确认保存后会自动同步到这里（标记「处方同步」）。<br>
+                  内建诊断库为系统自带（共 <b id="diag-builtin-count">0</b> 条），不可删除；上方列表仅管理你手动添加或处方同步进来的诊断。</div>
+              </div>
+            </div>
             <div class="section-card" data-page-node-id="payNoticeCard01">
               <div class="section-head" data-page-node-id="payNoticeHead01"><h3 data-page-node-id="payNoticeH301">缴费提醒</h3></div>
               <div class="switch-row" data-page-node-id="paySwitchRow01"><div><div class="switch-row-title">全屏缴费提示</div><div class="switch-row-sub">保存处方、或点击处方金额时，全屏大字提示患者缴费</div></div><div class="switch on" id="pay-switch" data-page-node-id="paySwitchBtn01"></div></div>
@@ -850,7 +878,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.20 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.21 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -974,16 +1002,185 @@ const DIAG_LIB = [
   '贫血|D64.9','血小板减少性紫癜|D69.3','白细胞减少症|D70','功能性低热|R50.8','腺样体肥大|J35.2',
   '外伤|T14.9','皮肤裂伤|T14.1','擦伤|T14.0','烧烫伤|T30.0','犬咬伤|W54','猫抓伤|W55','异物存留|T15.9','术后换药|Z48.0',
   '清创缝合|T81.8','换药|Z48.0','拆线|Z48.0','注射服务|Z51.9','雾化治疗|Z51.8','健康体检|Z00.0','健康咨询|Z71.9','复查随诊|Z09',
+  /* ---- 第 39 轮扩充：骨科 / 创伤外科 ---- */
+  '骨折|T14.9','闭合性骨折|T14.2','开放性骨折|T14.2','桡骨远端骨折|S52.5','肱骨骨折|S42.3','锁骨骨折|S24.0',
+  '股骨颈骨折|S72.0','股骨骨折|S72.3','胫腓骨骨折|S82.2','踝部骨折|S82.6','肋骨骨折|S22.3','脊椎压缩性骨折|S32.0',
+  '手指骨折|S62.6','足趾骨折|S92.5','骨盆骨折|S32.8','病理性骨折|M84.4','骨不连|M84.1','骨折延迟愈合|M84.1',
+  '关节脱位|S73.0','肩关节脱位|S43.0','桡骨小头半脱位|S53.0','颞下颌关节脱位|S03.0','腰椎滑脱|M43.1',
+  '半月板损伤|S83.2','交叉韧带损伤|S83.5','膝关节扭伤|S83.6','跟腱损伤|S86.0','跟腱断裂|S86.0','肌腱损伤|T14.2',
+  '腕管综合征|G56.0','肘管综合征|G56.2','狭窄性腱鞘炎|M65.3','扳机指|M65.3','压力性损伤|L89.9','褥疮|L89.9',
+  '拇外翻|M20.1','足底筋膜炎|M72.2','跟痛症|M77.3','跖骨痛|M77.4','扁平足|M21.4','髋关节骨性关节炎|M16.9',
+  '强直性脊柱炎|M45.9','痛风性关节炎急性发作|M10.0','化脓性关节炎|M00.9','骨髓炎|M86.9','骨肿瘤|D48.0',
+  '颈椎病(神经根型)|M47.2','颈椎病(椎动脉型)|M47.0','腰椎管狭窄症|M48.0','腰椎退行性变|M48.9','骨关节炎|M19.9',
+  '运动损伤|T14.9','肌肉劳损|M79.1','肌筋膜炎|M79.1','腰背肌筋膜炎|M54.5','梨状肌综合征|G57.0','胸廓出口综合征|G54.0',
+  /* ---- 第 39 轮扩充：普外科 / 乳腺外科 / 血管外科 ---- */
+  '体表肿块|R22.9','皮下囊肿|L72.9','皮脂腺囊肿|L72.1','脂肪瘤|D17.9','纤维瘤|D21.9','血管瘤|D18.0','淋巴结肿大|R59.9',
+  '淋巴结炎|L04.9','颈部淋巴结炎|L04.0','腹股沟疝|K40.9','腹股沟斜疝|K40.9','腹股沟直疝|K40.3','股疝|K41.9',
+  '脐疝|K42.9','切口疝|K43.9','白线疝|K43.6','鞘膜积液|N43.3','精索静脉曲张|I86.1','包茎|N47','包皮过长|N47',
+  '甲状腺瘤|D34','甲状腺囊肿|E04.1','乳腺纤维瘤|D24','乳腺囊肿|N60.0','乳腺结节|N63','急性乳腺炎|N61',
+  '副乳|Q82.9','乳头溢液|N64.5','男子乳腺发育|N62','下肢深静脉血栓|I80.2','动脉硬化闭塞症|I70.2','雷诺综合征|I73.0',
+  '淋巴结活检|Z01.2','伤口感染|T79.3','术后切口愈合不良|T81.3','脂肪液化|T81.3','窦道|T81.8','腹腔积液|R18',
+  '肠梗阻|K56.7','肠粘连|K66.0','急性腹膜炎|K65.9','腹部肿块|R19.0','腹痛|R10.4','急腹症|R10.0','消化道出血|K92.2',
+  '上消化道出血|K92.2','下消化道出血|K92.1','便血|K92.1','呕血|K92.0','腹腔脓肿|K65.0','急性胰腺炎|K85.9',
+  '胆管炎|K83.0','胆囊息肉|K82.8','肝囊肿|K76.8','肝血管瘤|D18.0','肝硬化失代偿期|K74.6','门静脉高压|K76.6',
+  '脾功能亢进|D73.1','脾肿大|R16.1','胃息肉|K31.7','结肠息肉|K63.5','直肠息肉|K62.1','肠息肉|K63.5',
+  '胃肠道间质瘤|D37.7','胃癌|C16.9','结直肠癌|C18.9','乳腺癌|C50.9','甲状腺癌|C73','肝恶性肿瘤|C22.9',
+  '食管癌|C15.9','肺癌|C34.9','胰腺癌|C25.9','恶性肿瘤术后随诊|Z08','肿瘤标志物升高|R97.9',
+  /* ---- 第 39 轮扩充：皮肤科 / 性传播疾病（非麻精类） ---- */
+  '扁平疣|B07','寻常疣|B07','跖疣|B07','传染性软疣|B08.1','丝状疣|B07','鸡眼|L84','胼胝|L84','汗疱疹|L30.1',
+  '神经性皮炎|L28.0','慢性单纯性苔藓|L28.0','玫瑰糠疹|L42','扁平苔藓|L43.9','白癜风|L80','黄褐斑|L81.1',
+  '雀斑|L81.1','老年斑|L82','色素痣|D22.9','皮赘|L91.8','瘢痕疙瘩|L91.0','疤痕增生|L91.0','萎缩纹|L90.6',
+  '脱发|L65.9','雄激素性脱发|L64.9','斑秃|L63.9','头癣|B35.0','花斑癣|B36.0','股癣|B35.6','念珠菌病|B37.9',
+  '汗斑|B36.0','褥疮性溃疡|L89.9','静脉性溃疡|I83.0','糖尿病足溃疡|E11.5','冻疮|T69.1','日光灼伤|L55.9',
+  '亚急性湿疹|L30.9','脂溢性皮炎|L21.9','头皮屑|L21.0','酒渣鼻|L71.9','口周皮炎|L71.0','激素依赖性皮炎|L30.9',
+  '化妆品皮炎|L25.9','药疹|L27.1','固定型药疹|L27.1','多形红斑|L51.9','结节性红斑|L52','过敏性紫癜(皮肤型)|D69.0',
+  '皮肤淀粉样变|E85.4','黑棘皮病|L83','硬皮病|M34.9','红斑狼疮|M32.9','系统性红斑狼疮|M32.9','皮肌炎|M33.9',
+  '疥疮|B86','阴虱病|B85.3','尖锐湿疣|A63.0','生殖器疱疹|A60.0','梅毒|A53.9','淋病|A54.9','非淋菌性尿道炎|A56.0',
+  '衣原体感染|A74.9','肛门瘙痒症|L29.0','肛周湿疹|L30.9','腘窝囊肿|M71.2','疖|L02.9','痈|L02.9','甲沟炎|L03.0',
+  '嵌甲|L60.0','鸡眼(跖部)|L84','足部多汗|R61.9','汗臭症|L75.0','腋臭|L75.0','多汗症|R61.9',
+  /* ---- 第 39 轮扩充：眼科 / 耳鼻咽喉科 / 口腔科 ---- */
+  '近视|H52.1','远视|H52.0','散光|H52.2','老视|H52.4','弱视|H53.0','斜视|H50.9','白内障|H26.9','青光眼|H40.9',
+  '玻璃体混浊|H43.3','飞蚊症|H43.3','视网膜病变|H35.9','糖尿病视网膜病变|E11.3','视网膜脱离|H33.5','黄斑变性|H35.3',
+  '角膜炎|H16.9','角膜溃疡|H16.0','虹膜睫状体炎|H20.9','葡萄膜炎|H20.9','泪囊炎|H04.3','泪道阻塞|H04.5',
+  '倒睫|H02.0','睑缘炎|H01.0','眼睑闭合不全|H02.2','外伤性角膜异物|T15.0','化学性眼外伤|T26.6','眼挫伤|S05.1',
+  '屈光不正|H52.7','视物模糊|H53.8','复视|H53.2','色觉异常|H53.5','夜盲症|H53.6','眼痛|H57.1','眼干|H04.1',
+  '急性中耳炎|H66.0','慢性中耳炎|H66.3','分泌性中耳炎|H65.9','化脓性中耳炎|H66.4','耳廓软骨膜炎|H61.0','耳前瘘管|Q18.1',
+  '耵聍栓塞|H61.2','外耳道异物|T16','梅尼埃病|H81.0','前庭神经炎|H81.2','良性阵发性位置性眩晕|H81.1','耳石症|H81.1',
+  '急性鼻窦炎|J01.9','慢性鼻窦炎|J32.9','鼻息肉|J33.9','鼻中隔偏曲|J34.2','萎缩性鼻炎|J31.0','血管运动性鼻炎|J30.0',
+  '鼻前庭炎|J34.0','鼻疖|J34.0','鼻骨骨折|S02.2','嗅觉减退|R43.0','扁桃体肥大|J35.1','慢性咽喉炎|J37.1',
+  '声带息肉|J38.2','声带小结|J38.2','喉炎|J04.0','咽喉异物感|R09.8','咽异感症|F45.8','打鼾|R06.5','睡眠呼吸暂停|G47.3',
+  '腺样体炎|J35.2','咽鼓管功能障碍|H68.1','鳃裂囊肿|Q18.0','甲状舌管囊肿|Q89.2','口腔黏膜病|K13.7','扁平苔藓(口腔)|L43.9',
+  '疱疹性咽峡炎|B08.5','颞下颌关节紊乱|K07.6','牙髓炎|K04.0','根尖周炎|K04.5','牙周脓肿|K05.3','阻生牙|K01.1',
+  '牙齿缺失|K08.1','口腔异味|R19.6','唾液腺炎|K11.2','腮腺炎|K11.2','口腔白斑|K13.2','口腔癌|C06.9',
+  /* ---- 第 39 轮扩充：内科细分（呼吸/消化/肾内/血液/风湿） ---- */
+  '肺气肿|J43.9','肺心病|I27.9','肺结核|A16.2','结核性胸膜炎|A15.6','胸腔积液|J94.8','气胸|J93.9','自发性气胸|J93.0',
+  '肺结节|R91.1','肺占位性病变|R91.1','肺不张|J98.1','呼吸衰竭|J96.9','呼吸性酸中毒|E87.2','慢性咳嗽|R05',
+  '慢性支气管炎急性加重|J44.1','细菌性肺炎|J15.9','支原体肺炎|J15.7','病毒性肺炎|J12.9','大叶性肺炎|J18.1','吸入性肺炎|J69.0',
+  '支气管扩张|J47','急性化脓性扁桃体炎|J03.9','急性喉支气管炎|J20.9','过敏性咳嗽|J45.0','气道高反应性|J98.8',
+  '幽门螺杆菌感染|K29.7','胃下垂|K31.8','胃石症|K31.8','急性胃黏膜病变|K29.1','应激性溃疡|K25.9','贲门失弛缓症|K22.0',
+  '食管裂孔疝|K44.9','慢性结肠炎|K51.9','溃疡性结肠炎|K51.9','克罗恩病|K50.9','缺血性肠病|K55.9','肠道菌群失调|K63.8',
+  '黑便|K92.1','胃炎伴糜烂|K29.6','十二指肠炎|K29.8','胆道感染|K83.0','胆囊切除术后|Z90.4','急性肝损伤|K72.0',
+  '药物性肝损伤|K71.9','酒精性肝病|K70.9','肝囊肿破裂|K76.8','肾小球肾炎|N05.9','肾病综合征|N04.9','急性肾损伤|N17.9',
+  '慢性肾功能不全|N18.9','慢性肾衰竭|N18.5','尿毒症|N18.5','肾功能异常|R94.4','肾囊肿|N28.1','多囊肾|Q61.3',
+  '肾积水|N13.3','膀胱过度活动症|N32.8','神经源性膀胱|N31.9','血尿|R31','蛋白尿|R80','乳糜尿|R82.0','尿潴留|R33',
+  '肾功能不全|N19','尿频|R35.0','尿急|R39.1','排尿困难|R39.1','尿道炎|N34.2','非特异性尿道炎|N34.2','精囊炎|N49.0',
+  '缺铁性贫血(妊娠期)|D50.9','巨幼细胞性贫血|D53.1','再生障碍性贫血|D61.9','溶血性贫血|D59.9','地中海贫血|D56.9',
+  '真性红细胞增多症|D45','骨髓增生异常综合征|D46.9','白血病|C95.9','淋巴瘤|C85.9','多发性骨髓瘤|C90.0',
+  '中性粒细胞减少|D70','全血细胞减少|D61.9','红细胞增多|R71','血小板增多症|D47.3','凝血功能异常|D68.9',
+  '风湿热|I00','风湿性关节炎|I00','骨关节炎(膝)|M17.9','干燥综合征|M35.0','混合性结缔组织病|M35.1','白塞病|M35.2',
+  '抗磷脂综合征|D68.6','大动脉炎|M31.4','风湿性多肌痛|M35.3','纤维肌痛综合征|M79.7','CREST综合征|M34.1','硬皮病(局限型)|L94.0',
+  'IgA肾病|N02.8','过敏性紫癜性肾炎|N08.2','痛风性肾病|M10.3','糖尿病足病|E11.5','代谢性骨病|M85.9','维生素D缺乏|E55.9',
+  /* ---- 第 39 轮扩充：儿科 / 妇产科 / 精神心理 / 康复 / 其他专科 ---- */
+  '新生儿脐炎|P38','新生儿皮炎|P83.8','新生儿红斑|P83.1','新生儿肺炎|P23.9','婴儿湿疹|L20.9','婴儿肠绞痛|K59.4',
+  '小儿感冒|J06.9','小儿急性喉炎|J05.0','小儿川崎病|M30.3','小儿肾病综合征|N04.9','小儿热性惊厥|R56.0','惊厥|R56.9',
+  '小儿贫血|D64.9','小儿营养不良|E46','小儿肥胖|E66.9','生长痛|M89.8','性早熟|E30.1','小儿佝偻病|E55.9',
+  '小儿厌食|R63.0','小儿遗尿|R32','小儿多动症|F90.9','注意缺陷多动障碍|F90.0','孤独症谱系障碍|F84.0','抽动障碍|F95.9',
+  '小儿哮喘|J45.9','小儿急性支气管炎|J20.9','婴幼儿腹泻|A09.9','轮状病毒肠炎|A08.0','小儿便秘|K59.0','小儿疝气|K40.9',
+  '先天性心脏病|Q24.9','房间隔缺损|Q21.1','室间隔缺损|Q21.0','动脉导管未闭|Q25.0','隐睾|Q53.9','尿道下裂|Q54.9',
+  '子宫肌瘤|D25.9','子宫腺肌症|N80.0','卵巢囊肿|N83.2','卵巢巧克力囊肿|N80.1','子宫内膜异位症|N80.9','子宫内膜息肉|N84.0',
+  '宫颈糜烂样改变|N86','宫颈息肉|N84.1','宫颈纳囊|N88.8','宫颈上皮内瘤变|N87.9','HPV感染|B97.7','卵巢早衰|E28.3',
+  '围绝经期综合征|N95.1','绝经后出血|N95.0','高泌乳素血症|E22.1','不孕症|N97.9','习惯性流产|N96','先兆流产|O20.0',
+  '妊娠期高血压|O13','妊娠期糖尿病|O24.4','妊娠合并贫血|O99.0','产后抑郁|F53.0','产后康复|Z39.2','产褥感染|O86.4',
+  '胎位异常|O32.9','胎盘早剥|O45.9','前置胎盘|O44.1','宫外孕|O00.9','葡萄胎|O01.9','卵巢扭转|N83.5',
+  '睡眠障碍|G47.9','发作性睡病|G47.4','嗜睡症|G47.1','梦游症|F51.3','夜惊症|F51.4','惊恐障碍|F41.0','强迫症|F42.9',
+  '创伤后应激障碍|F43.1','适应障碍|F43.2','躯体形式障碍|F45.9','疑病症|F45.2','神经性厌食|F50.0','神经性贪食|F50.2',
+  '酒精依赖|F10.2','烟草依赖|F17.2','网络成瘾|F63.8','老年痴呆|G30.9','血管性痴呆|F01.9','谵妄|F05.9','认知障碍|F09',
+  '脑出血|I61.9','蛛网膜下腔出血|I60.9','脑血栓形成|I63.3','脑栓塞|I63.4','腔隙性脑梗死|I63.8','脑动脉硬化|I67.2',
+  '颅内感染|G06.0','病毒性脑炎|A86','结核性脑膜炎|A17.0','颅内肿瘤|D43.9','脑萎缩|G31.9','脑外伤|S06.9',
+  '脑震荡|S06.0','脑挫裂伤|S06.2','硬膜下血肿|S06.5','癫痫持续状态|G41.9','重症肌无力|G70.0','周期性麻痹|G72.3',
+  '格林巴利综合征|G61.0','脊髓损伤|S14.1','截瘫|G82.2','偏瘫|G81.9','面肌痉挛|G51.3','书写痉挛|G25.8',
+  '言语障碍|R48.8','吞咽困难|R13','构音障碍|R47.1','失语症|R47.0','颅内压增高|G93.2','头痛(血管性)|G44.1',
+  '肩手综合征|G90.8','关节僵硬|M25.6','肌肉萎缩|M62.5','肌力减退|M62.8','运动功能障碍|R29.8','平衡障碍|R26.9',
+  '颈椎病术后|Z98.8','骨折术后康复|Z98.8','脑卒中后遗症|I69.4','脊髓损伤康复|Z50.8','言语康复训练|Z50.1',
+  '物理治疗|Z51.8','针灸治疗|Z51.8','推拿治疗|Z51.8','拔罐治疗|Z51.8','康复评定|Z01.8','体位引流|Z51.8',
+  '颈椎牵引|Z51.8','腰椎牵引|Z51.8','功能锻炼指导|Z71.8','职业康复|Z50.9','假肢适配|Z44.9','矫形器适配|Z46.9',
+  '粉尘接触史|Z57.2','职业健康检查|Z10.8','职业病筛查|Z13.8','健康档案建立|Z02.9','预防接种|Z23','疫苗咨询|Z71.9',
+  '流感疫苗接种|Z23','新冠疫苗接种|Z23','乙肝疫苗接种|Z23','破伤风抗毒素注射|Z23','狂犬病疫苗接种|Z23',
+  '体重管理|Z71.3','营养咨询|Z71.3','戒烟咨询|Z71.6','心理疏导|Z71.9','家庭病床|Z75.1','上门医疗服务|Z75.1',
+  '多学科会诊|Z75.5','远程会诊|Z75.5','转诊转院|Z75.6','出院随访|Z09','慢病随访|Z09','高血压随访|Z09',
+  /* ---- 中医证型 ---- */
   '风寒感冒','风热感冒','暑湿感冒','时行感冒','咳嗽·痰湿蕴肺','咳嗽·风热犯肺','心悸·心脾两虚','不寐·心肾不交',
   '不寐·肝火扰心','胃脘痛·脾胃虚寒','胃脘痛·肝胃不和','泄泻·脾虚湿盛','便秘·肠燥津亏','眩晕·肝阳上亢','头痛·血瘀阻络',
   '痹证·风寒湿痹','腰痛·肾虚血瘀','消渴·阴虚燥热','水肿·脾肾阳虚','月经不调·肝郁血瘀','痛经·寒凝血瘀','带下病·湿热下注',
   '湿疹·湿热蕴肤','虚劳·气血两虚','亚健康状态'
 ].map(function(s){ const p=s.split('|'); return { name:p[0], code:p[1]||'' }; });
+/* 内建诊断库的联想候选（只读基线，不含用户手动添加项） */
 const DIAG_OPTIONS = DIAG_LIB.map(function(d){ return {v:d.name, sub:d.code}; });
-/* 诊断名 → ICD-10 编码（诊断库内未收录时返回空串） */
+
+/* ---- 第 39 轮：用户自建诊断（手动添加 / 开处方时同步入库） ----
+   存储：Store.data.cfg.diagCustom = [{name:'自定义诊断名', code:'可选 ICD-10', src:'manual|rx', at:时间戳}]
+   放在 cfg 下有三个好处：
+     ① 随 Store.save() → syncPush() 自动同步到 NAS，多设备共享，不必新增接口；
+     ② 服务端 writeState 整库透传、不校验字段，无需改 app.js；
+     ③ Store.migrate() 用 Object.assign({}, DEFAULT_CFG, c) 合并 cfg，
+        未知字段会被原样保留，不会被覆盖丢失。 */
+function diagCustomList(){
+  try{ const a=(Store.data&&Store.data.cfg&&Store.data.cfg.diagCustom)||[]; return Array.isArray(a)?a:[]; }
+  catch(e){ return []; }
+}
+/* 是否已在内建库或自建库中（按名称精确匹配，去首尾空格） */
+function diagExists(name){
+  const n=String(name||'').trim(); if(!n) return false;
+  for(let i=0;i<DIAG_LIB.length;i++){ if(DIAG_LIB[i].name===n) return true; }
+  const c=diagCustomList();
+  for(let i=0;i<c.length;i++){ if(String(c[i].name||'').trim()===n) return true; }
+  return false;
+}
+/* 全部候选 = 内建 + 自建（自建在前，便于用户刚添加的诊断一眼可见）。
+   去重口径：与内建重名的自建项直接跳过 —— 内建库是权威数据，编码以它为准。 */
+function diagOptions(){
+  const builtin={};
+  DIAG_OPTIONS.forEach(function(o){ builtin[o.v]=1; });
+  const seen={}, out=[];
+  diagCustomList().forEach(function(d){
+    const n=String(d.name||'').trim(); if(!n||seen[n]) return;
+    if(builtin[n]) return;                 /* 与内建同名：直接放行给内建项，不能占用 seen */
+    seen[n]=1;
+    out.push({v:n, sub:String(d.code||'').trim()});
+  });
+  DIAG_OPTIONS.forEach(function(o){
+    if(seen[o.v]) return; seen[o.v]=1; out.push(o);
+  });
+  return out;
+}
+/* 新增一条自建诊断；返回 '' 表示成功，否则返回失败原因 */
+function addCustomDiag(name, code, src){
+  const n=String(name||'').trim();
+  if(!n) return '诊断名不能为空';
+  if(n.length>40) return '诊断名过长（最多 40 字）';
+  if(diagExists(n)) return '该诊断已存在';
+  if(!Store.data.cfg) Store.data.cfg={};
+  if(!Array.isArray(Store.data.cfg.diagCustom)) Store.data.cfg.diagCustom=[];
+  Store.data.cfg.diagCustom.push({ name:n, code:String(code||'').trim(), src:src||'manual', at:Date.now() });
+  return '';
+}
+/* 删除一条自建诊断（只能删自建，内建项不可删）；返回是否删除成功 */
+function removeCustomDiag(name){
+  const n=String(name||'').trim();
+  const arr=diagCustomList(); if(!arr.length) return false;
+  const i=arr.findIndex(function(d){ return String(d.name||'').trim()===n; });
+  if(i<0) return false;
+  arr.splice(i,1);
+  if(Store.data&&Store.data.cfg) Store.data.cfg.diagCustom=arr;
+  return true;
+}
+/* 把一批诊断名中「尚未入库」的同步进自建库。
+   返回真正新增的名称数组（供 UI 提示「已同步 N 条」）。 */
+function syncDiagToLib(names, src){
+  const added=[];
+  (names||[]).forEach(function(nm){
+    const n=String(nm||'').trim(); if(!n) return;
+    if(diagExists(n)) return;
+    if(addCustomDiag(n,'',src||'rx')==='') added.push(n);
+  });
+  return added;
+}
+/* 诊断名 → ICD-10 编码（内建库命中返回其编码；自建库命中返回自填编码；否则空串） */
 function diagICD(name){
   const n=String(name||'').trim(); if(!n) return '';
   for(let i=0;i<DIAG_LIB.length;i++){ if(DIAG_LIB[i]&&DIAG_LIB[i].name===n) return DIAG_LIB[i].code||''; }
+  const c=diagCustomList();
+  for(let i=0;i<c.length;i++){ if(String(c[i].name||'').trim()===n) return String(c[i].code||''); }
   return '';
 }
 
@@ -1114,6 +1311,61 @@ const DIAG_PLAN = [
   {k:['手足口病','水痘','流行性腮腺炎','猩红热','幼儿急疹','小儿腹泻','小儿肺炎','小儿支气管炎','维生素D缺乏性佝偻病','儿童生长迟缓','新生儿黄疸'],
    t:'1) 按儿童体重/体表面积计算剂量，优先儿童适宜剂型\n2) 退热补液、对症支持，警惕脱水与惊厥\n3) 隔离休息，传染病按规定上报与居家隔离\n4) 精神差、拒食、尿少、呼吸急促者及时转诊',
    a:'按体重准确给药，多饮水、清淡易消化饮食；传染病需居家隔离。出现高热惊厥、精神萎靡、拒食尿少、呼吸急促或皮疹加重须立即复诊。', fu:3},
+  /* ---- 第 39 轮扩充：骨伤科 / 外壳 / 皮肤专科 处置方案 ---- */
+  {k:['骨折','闭合性骨折','开放性骨折','桡骨远端骨折','肱骨骨折','锁骨骨折','股骨颈骨折','股骨骨折','胫腓骨骨折','踝部骨折','肋骨骨折','脊椎压缩性骨折','手指骨折','足趾骨折','骨盆骨折','病理性骨折','骨不连','骨折延迟愈合'],
+   t:'1) 评估生命体征与肢体血运、感觉、运动，开放性骨折先止血包扎\n2) 妥善固定（夹板/石膏/支具），闭合性骨折先冷敷抬高制动\n3) 疑似骨折一律转上级医院拍片明确，避免反复搬动与自行复位\n4) 开放性骨折、大血管神经损伤、骨筋膜室综合征征象者立即转急诊\n5) 止痛与破伤风预防，老年患者排查骨质疏松并评估跌倒风险',
+   a:'患肢抬高、制动，避免负重与剧烈活动；按医嘱定期复查拍片观察骨痂生长。出现石膏过紧致肢体麻木发凉、剧痛进行性加重、创口渗液异味或发热须立即复诊/转诊。', fu:14},
+  {k:['关节脱位','肩关节脱位','桡骨小头半脱位','颞下颌关节脱位','腰椎滑脱','半月板损伤','交叉韧带损伤','膝关节扭伤','跟腱损伤','跟腱断裂','肌腱损伤','腕管综合征','肘管综合征','狭窄性腱鞘炎','扳机指','拇外翻','足底筋膜炎','跟痛症','跖骨痛','扁平足','髋关节骨性关节炎','强直性脊柱炎','化脓性关节炎','骨髓炎','骨肿瘤','颈椎病(神经根型)','颈椎病(椎动脉型)','腰椎管狭窄症','腰椎退行性变','骨关节炎','运动损伤','肌肉劳损','肌筋膜炎','腰背肌筋膜炎','梨状肌综合征','胸廓出口综合征','压力性损伤','褥疮'],
+   t:'1) 患处制动休息，减少重复性劳损动作，必要时支具保护\n2) 急性期冷敷、慢性期热敷理疗（针灸、推拿、超声波、牵引）\n3) 消炎镇痛（外用优先，口服注意胃肠道与心血管风险）+ 肌松剂\n4) 神经受压症状（麻木、肌力下降）明显者转骨科评估手术指征\n5) 化脓性关节炎/骨髓炎须尽早足量抗感染并转诊引流\n6) 褥疮/压力性损伤需定时翻身减压迫、清创换药、加强营养',
+   a:'减少患处负重与反复劳损，注意保暖防潮，坚持功能锻炼。出现肢体麻木无力、关节交锁弹响、大小便功能障碍、局部红肿热痛或发热须尽快复诊/转骨科。', fu:14},
+  {k:['体表肿块','皮下囊肿','皮脂腺囊肿','脂肪瘤','纤维瘤','血管瘤','淋巴结肿大','淋巴结炎','颈部淋巴结炎','腹股沟疝','腹股沟斜疝','腹股沟直疝','股疝','脐疝','切口疝','白线疝','鞘膜积液','精索静脉曲张','包茎','包皮过长','甲状腺瘤','甲状腺囊肿','乳腺纤维瘤','乳腺囊肿','乳腺结节','急性乳腺炎','副乳','乳头溢液','男子乳腺发育','淋巴结活检'],
+   t:'1) 触诊评估大小、质地、边界、活动度、压痛与波动感，必要时超声检查\n2) 炎症性肿块先抗感染治疗并观察 3~7 天变化\n3) 疝气无嵌顿时择期手术，嵌顿/绞窄须立即转急诊\n4) 甲状腺、乳腺结节按超声分级随访，可疑恶性转专科穿刺活检\n5) 体表囊肿/脂肪瘤有症状或影响外观者择期手术切除',
+   a:'保持局部清洁，避免反复挤压揉搓肿块；肿块短期内明显增大、变硬固定、破溃出血或伴疼痛、发热须尽快复诊。腹股沟肿块突然变硬剧痛伴呕吐须立即急诊。', fu:14},
+  {k:['动脉硬化闭塞症','雷诺综合征','伤口感染','术后切口愈合不良','脂肪液化','窦道','腹腔积液','肠梗阻','肠粘连','急性腹膜炎','腹部肿块','腹痛','急腹症','消化道出血','上消化道出血','下消化道出血','便血','呕血','腹腔脓肿','急性胰腺炎','胆管炎','胆囊息肉','肝囊肿','肝血管瘤','肝硬化失代偿期','门静脉高压','脾功能亢进','脾肿大','胃息肉','结肠息肉','直肠息肉','肠息肉'],
+   t:'1) 详细询问腹痛部位/性质/放射/诱因，查体重点：压痛反跳痛、肌紧张、肠鸣音、包块\n2) 禁食、补液、纠正水电解质紊乱，必要时胃肠减压\n3) 完善血常规、淀粉酶、腹部超声/CT 等明确诊断\n4) 急腹症（板状腹、拒按、休克）立即转急诊手术评估\n5) 消化道出血观察生命体征与出血量，必要时输血并紧急转诊\n6) 息肉/占位性病变转消化内镜或外科进一步处理',
+   a:'规律饮食、忌暴饮暴食与油腻；腹痛急性期暂禁食，勿自行服止痛药掩盖病情。出现持续性剧烈腹痛、呕血黑便、腹肌紧张拒按、发热寒战或意识改变须立即急诊。', fu:7},
+  {k:['下肢深静脉血栓形成'],
+   t:'1) 卧床制动、抬高患肢，绝对禁止按摩患肢（防栓子脱落）\n2) 立即转上级医院行超声检查与规范抗凝治疗\n3) 评估肺栓塞风险（呼吸困难、胸痛、咯血）\n4) 高危患者遵医嘱使用抗凝药物与压力袜',
+   a:'卧床休息、抬高患肢，严禁按摩揉搓与剧烈活动。出现突发胸痛、呼吸困难、咯血须立即呼叫急救（警惕肺栓塞）。', fu:3},
+  {k:['胃癌','结直肠癌','乳腺癌','甲状腺癌','肝恶性肿瘤','食管癌','肺癌','胰腺癌','恶性肿瘤术后随诊','肿瘤标志物升高','胃肠道间质瘤','恶性肿瘤'],
+   t:'1) 明确肿瘤分期与病理类型，评估手术/放化疗指征\n2) 完善影像与肿瘤标志物基线，必要时转肿瘤专科多学科会诊\n3) 对症支持治疗：止痛（按三阶梯原则）、营养支持、心理疏导\n4) 术后随诊按规范周期复查，监测复发与转移\n5) 晚期患者以改善生活质量为目标的姑息支持治疗',
+   a:'按专科医师制定的随访计划定期复查（影像 + 肿瘤标志物）；加强营养与心理支持，适度活动。出现新发疼痛、体重骤降、梗阻出血或原有症状明显加重须尽快复诊。', fu:90},
+  {k:['扁平疣','寻常疣','跖疣','传染性软疣','丝状疣','鸡眼','胼胝','汗疱疹','神经性皮炎','慢性单纯性苔藓','玫瑰糠疹','扁平苔藓','白癜风','黄褐斑','雀斑','老年斑','色素痣','皮赘','瘢痕疙瘩','疤痕增生','萎缩纹','脱发','雄激素性脱发','斑秃','头癣','花斑癣','股癣','念珠菌病','汗斑','褥疮性溃疡','静脉性溃疡','糖尿病足溃疡','冻疮','日光灼伤','亚急性湿疹','脂溢性皮炎','头皮屑','酒渣鼻','口周皮炎','激素依赖性皮炎','化妆品皮炎','药疹','固定型药疹','多形红斑','结节性红斑','过敏性紫癜(皮肤型)','皮肤淀粉样变','黑棘皮病','硬皮病','红斑狼疮','系统性红斑狼疮','皮肌炎'],
+   t:'1) 明确皮损形态、分布与病程，必要时皮损刮片/真菌镜检/皮肤活检\n2) 病毒疣类以物理治疗（冷冻、激光）为主，顽固者联合免疫调节\n3) 炎症性/自身免疫性皮肤病按强度选用外用糖皮质激素或钙调磷酸酶抑制剂\n4) 光敏感性/光加重者严格防晒（遮阳 + 广谱防晒霜）\n5) 系统性疾病（红斑狼疮、皮肌炎、硬皮病）转风湿免疫科规范评估\n6) 溃疡类加强清创换药、减压与血运/血糖评估',
+   a:'避免搔抓、热水烫洗与自行挑挤；坚持皮肤保湿；光敏感皮肤病严格防晒。皮损范围快速扩大、出现发热关节痛、多系统受累表现或溃疡不愈合须尽快复诊/转专科。', fu:14},
+  {k:['疥疮','阴虱病','尖锐湿疣','生殖器疱疹','梅毒','淋病','非淋菌性尿道炎','衣原体感染','肛门瘙痒症','肛周湿疹','腘窝囊肿','疖','痈','甲沟炎','嵌甲','鸡眼(跖部)','足部多汗','汗臭症','腋臭','多汗症'],
+   t:'1) 规范化性传播疾病诊疗：明确病原、足疗程足剂量、性伴侣同治\n2) 治疗期间禁止性生活，做好接触隔离与物品消毒\n3) 疥疮/阴虱需全家同治并彻底消毒衣物床品\n4) 疖、痈、甲沟炎局部抗感染，脓肿形成切开引流，必要时口服抗菌药\n5) 疣类以冷冻/激光等物理治疗为主\n6) 按规定完成传染病报告与随访复查',
+   a:'治疗期间禁止性生活并按医嘱完成全疗程；衣物床品高温消毒、单独使用。出现脓性分泌物增多、发热、局部红肿热痛加重或新发皮损须尽快复诊。', fu:7},
+  {k:['近视','远视','散光','老视','弱视','斜视','白内障','青光眼','玻璃体混浊','飞蚊症','视网膜病变','糖尿病视网膜病变','视网膜脱离','黄斑变性','角膜炎','角膜溃疡','虹膜睫状体炎','葡萄膜炎','泪囊炎','泪道阻塞','倒睫','睑缘炎','眼睑闭合不全','外伤性角膜异物','化学性眼外伤','眼挫伤','屈光不正','视物模糊','复视','色觉异常','夜盲症','眼痛','眼干'],
+   t:'1) 查视力、眼压、裂隙灯与眼底，必要时视野与 OCT 检查\n2) 屈光不正验光配镜矫正，青少年定期复查防控近视进展\n3) 感染性炎症局部抗感染/抗病毒滴眼液规范使用\n4) 青光眼/视网膜脱离/化学伤属眼科急症，立即转诊眼科\n5) 糖尿病视网膜病变需严格控制血糖血脂血压并定期眼底随访',
+   a:'注意用眼卫生、勿揉眼，控制电子屏幕使用时间并多远眺；青光眼禁用散瞳药。出现突发视力急剧下降、剧烈眼痛、视野缺损、眼前黑影飘动增多伴闪光感须立即眼科急诊。', fu:7},
+  {k:['急性中耳炎','慢性中耳炎','分泌性中耳炎','化脓性中耳炎','耳廓软骨膜炎','耳前瘘管','耵聍栓塞','外耳道异物','梅尼埃病','前庭神经炎','良性阵发性位置性眩晕','耳石症','急性鼻窦炎','慢性鼻窦炎','鼻息肉','鼻中隔偏曲','萎缩性鼻炎','血管运动性鼻炎','鼻前庭炎','鼻疖','鼻骨骨折','嗅觉减退','扁桃体肥大','慢性咽喉炎','声带息肉','声带小结','喉炎','咽喉异物感','咽异感症','打鼾','睡眠呼吸暂停','腺样体炎','咽鼓管功能障碍','鳃裂囊肿','甲状舌管囊肿','口腔黏膜病','扁平苔藓(口腔)','疱疹性咽峡炎','颞下颌关节紊乱','牙髓炎','根尖周炎','牙周脓肿','阻生牙','牙齿缺失','口腔异味','唾液腺炎','腮腺炎','口腔白斑','口腔癌'],
+   t:'1) 耳镜/鼻内镜/间接喉镜检查明确病变部位\n2) 中耳炎、鼻窦炎按指征使用抗菌药物，鼻腔冲洗与鼻用激素喷剂\n3) 耳石症行手法复位，梅尼埃病低盐饮食 + 对症止晕\n4) 耵聍栓塞/异物由专科医师取出，勿自行掏挖\n5) 牙源性炎症转口腔科根管治疗/拔除，脓肿期先抗感染\n6) 声带息肉、鼻息肉、阻生牙、肿瘤性病变转专科手术或活检\n7) 睡眠呼吸暂停评估严重程度，必要时转呼吸科行睡眠监测',
+   a:'保持鼻腔口腔清洁，避免用力擤鼻、掏耳与进食过硬食物；戒烟酒、少食辛辣。出现听力突然下降、持续鼻塞鼻出血、吞咽困难、颈部肿块或张口受限须尽快转专科复诊。', fu:7},
+  {k:['肺气肿','肺心病','肺结核','结核性胸膜炎','胸腔积液','气胸','自发性气胸','肺结节','肺占位性病变','肺不张','呼吸衰竭','呼吸性酸中毒','慢性咳嗽','慢性支气管炎急性加重','细菌性肺炎','支原体肺炎','病毒性肺炎','大叶性肺炎','吸入性肺炎','支气管扩张','急性化脓性扁桃体炎','急性喉支气管炎','过敏性咳嗽','气道高反应性','幽门螺杆菌感染','胃下垂','胃石症','急性胃黏膜病变','应激性溃疡','贲门失弛缓症','食管裂孔疝','慢性结肠炎','溃疡性结肠炎','克罗恩病','缺血性肠病','肠道菌群失调','黑便','胃炎伴糜烂','十二指肠炎','胆道感染','胆囊切除术后','急性肝损伤','药物性肝损伤','酒精性肝病','肝囊肿破裂'],
+   t:'1) 完善血常规、CRP、胸片/CT、肺功能或胃肠镜等明确诊断\n2) 感染性疾病按病原与药敏规范抗感染，足疗程并复评疗效\n3) 咳嗽咳痰者祛痰止咳，气促低氧者吸氧并评估呼吸支持指征\n4) 肺结核等传染病按规范转结核专科并做好隔离报告\n5) 消化道疾病注重抑酸、护胃、促动力与黏膜保护，规范根除幽门螺杆菌\n6) 炎症性肠病转消化专科规范评估与生物制剂/免疫抑制治疗',
+   a:'戒烟、避免粉尘与冷空气刺激，规律进食、忌辛辣油腻与浓茶咖啡。出现咯血、呼吸困难加重、持续发热、黑便呕血、体重明显下降或症状反复不缓解须尽快复诊。', fu:14},
+  {k:['肾小球肾炎','肾病综合征','急性肾损伤','慢性肾功能不全','慢性肾衰竭','尿毒症','肾功能异常','肾囊肿','多囊肾','肾积水','膀胱过度活动症','神经源性膀胱','血尿','蛋白尿','乳糜尿','尿潴留','肾功能不全','尿频','尿急','排尿困难','尿道炎','非特异性尿道炎','精囊炎','IgA肾病','过敏性紫癜性肾炎','痛风性肾病','糖尿病足病','代谢性骨病','维生素D缺乏'],
+   t:'1) 查尿常规、尿蛋白定量、肾功能、泌尿系超声明确病因\n2) 控制血压血糖、限制蛋白与盐摄入，避免肾毒性药物\n3) 泌尿系感染规范抗感染，梗阻性病变及时解除梗阻\n4) 尿潴留先导尿解除，评估前列腺/神经源性病因\n5) 肾功能持续恶化、大量蛋白尿、少尿无尿者转肾内科评估透析指征\n6) 代谢性骨病补充钙剂与维生素 D，评估骨密度',
+   a:'多饮水、勤排尿，低盐低脂优质蛋白饮食；避免使用肾损伤药物（如非甾体抗炎药、氨基糖苷类）。出现尿量明显减少、浮肿加重、血肌酐快速上升、发热腰痛或肉眼血尿须尽快复诊。', fu:14},
+  {k:['缺铁性贫血(妊娠期)','巨幼细胞性贫血','再生障碍性贫血','溶血性贫血','地中海贫血','真性红细胞增多症','中性粒细胞减少','全血细胞减少','红细胞增多','血小板增多症','凝血功能异常','风湿热','风湿性关节炎','干燥综合征','混合性结缔组织病','白塞病','抗磷脂综合征','大动脉炎','风湿性多肌痛','纤维肌痛综合征','CREST综合征','硬皮病(局限型)'],
+   t:'1) 完善血常规、网织红细胞、铁代谢、自身抗体谱等明确病因\n2) 缺铁/巨幼贫补充相应造血原料并查找失血或吸收不良原因\n3) 自身免疫性结缔组织病转风湿免疫科规范免疫抑制治疗\n4) 血液系统恶性疾病转血液科专科评估\n5) 关节症状予消炎镇痛与功能保护，注意糖皮质激素长期副作用监测\n6) 定期复查血象与相关指标，评估疗效与并发症',
+   a:'均衡营养、富含铁与优质蛋白饮食；避免感染与过度劳累。出现发热、出血倾向、贫血加重、关节肿痛加重或新发皮疹须尽快复诊/转专科。', fu:30},
+  {k:['新生儿脐炎','新生儿皮炎','新生儿红斑','新生儿肺炎','婴儿湿疹','婴儿肠绞痛','小儿感冒','小儿急性喉炎','小儿川崎病','小儿肾病综合征','小儿热性惊厥','惊厥','小儿贫血','小儿营养不良','小儿肥胖','生长痛','性早熟','小儿佝偻病','小儿厌食','小儿遗尿','小儿多动症','注意缺陷多动障碍','孤独症谱系障碍','抽动障碍','小儿哮喘','小儿急性支气管炎','婴幼儿腹泻','轮状病毒肠炎','小儿便秘','小儿疝气','先天性心脏病','房间隔缺损','室间隔缺损','动脉导管未闭','隐睾','尿道下裂'],
+   t:'1) 严格按体重/体表面积计算儿童药物剂量，优先儿童适宜剂型\n2) 评估生长发育曲线、营养状态与免疫接种史\n3) 补液与对症支持，警惕脱水、惊厥与呼吸窘迫\n4) 先天性心脏病、隐睾、尿道下裂、川崎病等尽早转儿科专科评估手术/治疗时机\n5) 发育行为问题（多动、抽动、孤独症谱系）转儿童保健/心理行为专科评估干预\n6) 家长宣教：喂养、护理、预防接种与惊厥家庭急救',
+   a:'按体重准确给药，合理喂养、保证睡眠与户外活动；按时完成预防接种。出现高热惊厥、精神萎靡、拒食尿少、呼吸急促、皮肤发花或抽搐持续不缓解须立即急诊。', fu:3},
+  {k:['子宫肌瘤','子宫腺肌症','卵巢囊肿','卵巢巧克力囊肿','子宫内膜异位症','子宫内膜息肉','宫颈糜烂样改变','宫颈息肉','宫颈纳囊','宫颈上皮内瘤变','HPV感染','卵巢早衰','围绝经期综合征','绝经后出血','高泌乳素血症','不孕症','习惯性流产','先兆流产','妊娠期高血压','妊娠期糖尿病','妊娠合并贫血','产后抑郁','产后康复','产褥感染','胎位异常','胎盘早剥','前置胎盘','宫外孕','葡萄胎','卵巢扭转'],
+   t:'1) 完善妇科超声、宫颈细胞学 + HPV 筛查、性激素等检查\n2) 妊娠相关情况立即评估宫内/宫外、胎心与孕周，必要时立即转产科\n3) 宫颈病变按分级随访或转阴道镜/专科处理\n4) 内分泌失调予调经/促排卵等规范治疗并监测副作用\n5) 妇科肿瘤性病变转妇科专科制定手术/放化疗方案\n6) 产后关注情绪与盆底功能，必要时转心理/康复专科',
+   a:'注意经期与性生活卫生，定期妇科体检与宫颈筛查；孕期按时产检、避免剧烈活动与同房（有医嘱禁忌时）。出现阴道大量流血、剧烈下腹痛、胎动异常、头晕晕厥或发热腹痛须立即急诊。', fu:30},
+  {k:['睡眠障碍','发作性睡病','嗜睡症','梦游症','夜惊症','惊恐障碍','强迫症','创伤后应激障碍','适应障碍','躯体形式障碍','疑病症','神经性厌食','神经性贪食','酒精依赖','烟草依赖','网络成瘾','老年痴呆','血管性痴呆','谵妄','认知障碍','脑出血','蛛网膜下腔出血','脑血栓形成','脑栓塞','腔隙性脑梗死','脑动脉硬化','颅内感染','病毒性脑炎','结核性脑膜炎','脑萎缩','脑外伤','脑震荡','脑挫裂伤','硬膜下血肿','癫痫持续状态','重症肌无力','周期性麻痹','格林巴利综合征','脊髓损伤','截瘫','偏瘫','面肌痉挛','书写痉挛','言语障碍','吞咽困难','构音障碍','失语症','颅内压增高','头痛(血管性)'],
+   t:'1) 详细神经系统查体与认知/精神量表评估，必要时头颅 CT/MRI\n2) 脑血管急症（脑出血、脑梗死、蛛网膜下腔出血）按卒中绿色通道立即转诊\n3) 癫痫持续状态立即止惊并保持气道通畅、转急诊\n4) 精神心理障碍评估严重程度与自伤自杀风险，必要时转精神专科\n5) 物质依赖予行为干预与替代/戒断支持治疗\n6) 康复期尽早介入肢体、言语、吞咽与认知功能训练',
+   a:'规律作息、戒烟限酒、控制血压血糖血脂；勿自行停用抗癫痫或精神科药物。出现突发剧烈头痛、意识障碍、肢体无力麻木、言语不清、抽搐持续或情绪极端波动须立即急诊。', fu:14},
+  {k:['肩手综合征','关节僵硬','肌肉萎缩','肌力减退','运动功能障碍','平衡障碍','颈椎病术后','骨折术后康复','脑卒中后遗症','脊髓损伤康复','言语康复训练','物理治疗','针灸治疗','推拿治疗','拔罐治疗','康复评定','体位引流','颈椎牵引','腰椎牵引','功能锻炼指导','职业康复','假肢适配','矫形器适配'],
+   t:'1) 康复评定：关节活动度、肌力、平衡、步行与日常生活能力\n2) 制定个体化康复方案：物理治疗、作业治疗、言语与吞咽训练\n3) 疼痛与痉挛管理，必要时药物或局部干预\n4) 康复辅具评估与适配（支具、矫形器、假肢、助行器）\n5) 循序渐进、持之以恒，定期复评并调整方案\n6) 家庭康复指导与随访，预防跌倒与并发症',
+   a:'按康复计划坚持功能锻炼，循序渐进、避免过度疲劳与跌倒；注意患肢保暖与良肢位摆放。出现新发疼痛加重、关节肿胀、跌倒受伤或功能明显倒退须复诊复评。', fu:14},
+  {k:['粉尘接触史','职业健康检查','职业病筛查','健康档案建立','预防接种','疫苗咨询','流感疫苗接种','新冠疫苗接种','乙肝疫苗接种','破伤风抗毒素注射','狂犬病疫苗接种','体重管理','营养咨询','戒烟咨询','心理疏导','家庭病床','上门医疗服务','多学科会诊','远程会诊','转诊转院','出院随访','慢病随访','高血压随访'],
+   t:'1) 完善健康评估与风险筛查，建立或更新健康档案\n2) 按规范完成预防接种，交代接种后观察与不良反应处理\n3) 针对危险因素（吸烟、职业暴露、超重）予个体化干预建议\n4) 慢病随访：评估用药依从性、指标控制情况与并发症\n5) 需多学科或上级医院处理者协助转诊并做好随访衔接\n6) 给予营养、运动、心理、戒烟等健康生活方式指导',
+   a:'坚持健康生活方式：均衡饮食、适度运动、规律作息、戒烟限酒；按医嘱服药并定期复查。出现原有症状加重、新发不适或药物不良反应须及时就诊。', fu:90},
   /* 诊疗操作 */
   {k:['清创缝合','换药','拆线','术后换药','异物存留','注射服务','雾化治疗','术后'],
    t:'1) 严格无菌操作，评估伤口愈合情况\n2) 清洁消毒、必要时引流与重新包扎\n3) 交代换药/拆线时间与注意事项\n4) 红肿渗液化脓者加强抗感染并缩短复诊间隔',
@@ -3656,7 +3908,7 @@ function openPatientEditor(patientId, ret){
     '<button class="btn btn-secondary" onclick="Modal.close()">取消</button>'+
     (isEdit?'<button class="btn btn-danger" onclick="patientDelete(\''+p.id+'\')">删除患者</button>':'')+
     '<button class="btn btn-primary" onclick="savePatient(\''+(patientId||'')+'\','+isEdit+','+rt+')">保存</button>',{lock:true});
-  initTagField('tf-pasthx', DIAG_OPTIONS, d.pastHistory);
+  initTagField('tf-pasthx', diagOptions(), d.pastHistory);
   initTagField('tf-medhx', drugOptions(), d.medHistory);
   bindAgeBirthLink();
 }
@@ -3911,7 +4163,7 @@ function openRxEditor(patientId, rxId){
   document.getElementById('tab-western').onclick=function(){ window._rxState.type='western'; document.getElementById('tab-western').classList.add('active'); document.getElementById('tab-tcm').classList.remove('active'); renderRxItems(); };
   document.getElementById('tab-tcm').onclick=function(){ window._rxState.type='tcm'; document.getElementById('tab-tcm').classList.add('active'); document.getElementById('tab-western').classList.remove('active'); renderRxItems(); };
   const dxInit=(old?String(old.diagnosis||''):'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean);
-  initTagField('tf-rxdx', DIAG_OPTIONS, dxInit);
+  initTagField('tf-rxdx', diagOptions(), dxInit);
   renderRxItems();
   setTimeout(refreshRxAlerts,60);
 }
@@ -4678,6 +4930,18 @@ window.saveRx=function(patientId, rxId, status){
     return;
   }
   const alertData=rxAlertData();
+  /* 第 39 轮：临床诊断若不在内建诊断库中，先确认、再放行，保存时自动同步入库。
+     位置刻意放在「所有硬校验通过之后、保存动作之前」：
+       · 硬校验（诊断非空 / 有药品 / 数量拆零）失败时不该弹这个确认，否则用户要重复确认；
+       · 放在 doSave 之前而不是 doSave 内部，保证一次保存只弹一次
+         （doSave 可能因签名板 / 智能检查被调用，若放里面会重复弹）。 */
+  const missingDx=dxArr.filter(function(n){ return !diagExists(n); });
+  if(missingDx.length){
+    const msg='以下临床诊断不在内建诊断库中：\n\n· '+missingDx.join('\n· ')+
+      '\n\n确认后可以正常保存处方，同时系统会把上述诊断同步添加到内建诊断库，'+
+      '以后开具处方或门诊接诊时可直接联想选择。\n\n是否继续保存？';
+    if(!confirm(msg)){ toast('已取消保存', 2200); return; }
+  }
   if(alertData.err.length && !confirm('检测到 '+alertData.err.length+' 项必须处理的问题：\n\n· '+alertData.err.join('\n· ')+'\n\n确认仍要保存？')) return;
   /* 关键修复：智能提示弹窗 / 手写签名板与处方表单共用同一个 Modal 容器，
      弹出后会把处方表单的 DOM 整体替换掉。因此这里先把表单值一次性快照下来，
@@ -4693,6 +4957,16 @@ window.saveRx=function(patientId, rxId, status){
   };
   const doSave=function(){
     const now=Date.now();
+    /* 第 39 轮：把「不在库中的临床诊断」同步进内建诊断库（自建库）。
+       放在 doSave 最前面、Store.save() 之前，这样同一次保存就把新诊断一起落库并推送，
+       不需要用户再跑一趟设置页。已确认过（missingDx）才会走到这里。 */
+    let syncedDx=[];
+    try{
+      if(missingDx.length){
+        syncedDx=syncDiagToLib(missingDx,'rx');
+        try{ if(typeof renderDiagLib==='function') renderDiagLib(); }catch(e){}
+      }
+    }catch(e){ syncedDx=[]; }
     const base={ diagnosis:diagnosis, category:_snap.category, feeType:_snap.feeType,
       dept:_snap.dept, notes:_snap.notes,
       rxType:_snap.rxType, patientId:patientId, totalAmount:_snap.totalAmount };
@@ -4753,7 +5027,9 @@ window.saveRx=function(patientId, rxId, status){
     Store.save(); Modal.close(); renderRxList(); renderHome();
     const vb=document.querySelector('.modal-body .rx-validate'); if(vb&&vb.parentNode) vb.parentNode.removeChild(vb);
     const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
-    toast(alertData.warn.length ? (baseMsg+'（另有 '+alertData.warn.length+' 项提示请复核）') : baseMsg, 3200);
+    const syncMsg = syncedDx.length ? ('；已同步 '+syncedDx.length+' 条新诊断到诊断库') : '';
+    const warnMsg = alertData.warn.length ? ('（另有 '+alertData.warn.length+' 项提示请复核）') : '';
+    toast(baseMsg+syncMsg+warnMsg, 3600);
     /* 第 28 轮：成功后把用户带到「门诊日志」，让"是否已同步"一眼可见 */
     if(status==='signed') setTimeout(function(){ try{ showPage('visits'); }catch(e){} }, 80);
     /* 保存草稿 / 签名并保存后，全屏提示患者缴费（金额取自刚才的快照） */
@@ -5018,7 +5294,7 @@ function openVisitEditor(pid, vid){
     (isEdit?'<button class="btn btn-danger" onclick="visitDelete(\''+vid+'\')">删除</button>':'')+
     '<button class="btn btn-secondary" onclick="Modal.close()">取消</button>'+
     '<button class="btn btn-primary" onclick="saveVisit(\''+pid+'\',\''+(vid||'')+'\')">保存接诊记录</button>',{lock:true});
-  initTagField('tf-vdx', DIAG_OPTIONS, dxInit, function(){ visitAutoPlan(0); });
+  initTagField('tf-vdx', diagOptions(), dxInit, function(){ visitAutoPlan(0); });
   date3Bind('vfu', updateFuHint);
   updateFuHint();
   if(dxInit.length && !val('treatment') && !val('advice')) visitAutoPlan(0);
@@ -5402,7 +5678,60 @@ window.renderTtsStatus=renderTtsStatus;
   setupSettingPad();
   refreshBackupDirHint();
   renderSyncServerHint();
+  renderDiagLib();
 }
+/* ---- 第 39 轮：内建诊断库管理卡片渲染 ---- */
+function renderDiagLib(){
+  const bc=document.getElementById('diag-builtin-count'); if(bc) bc.textContent=String(DIAG_LIB.length);
+  const cnt=document.getElementById('diag-lib-count');
+  const list=diagCustomList();
+  if(cnt){
+    cnt.textContent = list.length ? ('自建 '+list.length+' 条 / 内建 '+DIAG_LIB.length+' 条')
+      : ('共 '+DIAG_LIB.length+' 条');
+  }
+  const box=document.getElementById('diag-custom-list'); if(!box) return;
+  if(!list.length){ box.innerHTML='<div class="empty">还没有手动添加的诊断。可在上方输入后点「＋ 添加诊断」，或直接在开处方时输入新诊断，确认保存后自动同步过来。</div>'; return; }
+  /* 新添加的排前面，便于刚添加完一眼看到 */
+  const arr=list.slice().sort(function(a,b){ return (Number(b.at)||0)-(Number(a.at)||0); });
+  box.innerHTML=arr.map(function(d){
+    const name=String(d.name||'').trim();
+    const code=String(d.code||'').trim();
+    const tag=d.src==='rx'?'处方同步':'手动添加';
+    return '<span class="diag-chip" title="'+escapeHtml(name+(code?('　ICD-10：'+code):''))+'">'+
+      '<b>'+escapeHtml(name)+'</b>'+(code?('<span style="color:var(--text-tertiary);font-size:12px">'+escapeHtml(code)+'</span>'):'')+
+      '<span class="dc-src">'+tag+'</span>'+
+      '<button type="button" title="删除该诊断" data-diag-del="'+escapeHtml(name)+'">×</button></span>';
+  }).join('');
+}
+window.renderDiagLib=renderDiagLib;
+/* 添加诊断（设置页按钮） */
+window.addDiagFromSettings=function(){
+  const nameEl=document.getElementById('diag-add-name'), codeEl=document.getElementById('diag-add-code');
+  const hint=document.getElementById('diag-add-hint');
+  const name=nameEl?nameEl.value:'', code=codeEl?codeEl.value:'';
+  const err=addCustomDiag(name, code, 'manual');
+  if(err){ if(hint){ hint.style.color='var(--danger)'; hint.textContent='✕ '+err; } toast(err); return; }
+  Store.save();
+  if(nameEl) nameEl.value=''; if(codeEl) codeEl.value='';
+  if(hint){ hint.style.color='var(--success)'; hint.textContent='✓ 已添加「'+String(name).trim()+'」，处方与门诊诊断均可联想搜索'; }
+  renderDiagLib();
+  toast('已添加诊断：'+String(name).trim());
+};
+/* 删除自建诊断 */
+window.removeDiagCustom=function(name){
+  const n=String(name||'').trim(); if(!n) return;
+  if(!confirm('确认删除自定义诊断「'+n+'」？\n\n删除后该诊断不再出现在联想列表中，已保存的处方与门诊记录不受影响。')) return;
+  if(removeCustomDiag(n)){ Store.save(); renderDiagLib(); toast('已删除：'+n); }
+  else toast('未找到该诊断');
+};
+/* 清空手动添加记录（处方同步进来的保留） */
+window.clearDiagManual=function(){
+  const list=diagCustomList().filter(function(d){ return d.src!=='rx'; });
+  if(!list.length){ toast('没有手动添加的诊断需要清理'); return; }
+  if(!confirm('将删除全部 '+list.length+' 条「手动添加」的诊断。\n\n由「处方同步」自动入库的诊断会保留。确认继续？')) return;
+  Store.data.cfg.diagCustom=diagCustomList().filter(function(d){ return d.src==='rx'; });
+  Store.save(); renderDiagLib(); toast('已清理 '+list.length+' 条手动添加的诊断');
+};
 let settingsBound=false;
 function bindSettings(){
   if(settingsBound) return; settingsBound=true;
@@ -5508,9 +5837,23 @@ function bindSettings(){
     if(!confirm('⚠ 确认清空所有数据？此操作不可恢复！')) return;
     if(!confirm('再次确认：所有药品 / 患者 / 处方 / 病历 将全部删除')) return;
     Store.data={ cfg:Store.data.cfg, drugs:[], patients:[], visits:[], prescriptions:[], counters:{rx:1,patient:1,visit:1,rxSerial:2096800001} };
-    Store.save(); showPage('home'); toast('已清空');
-  };
-}
+      Store.save(); showPage('home'); toast('已清空');
+    };
+    /* 第 39 轮：内建诊断库管理 */
+    const dAdd=document.getElementById('diag-add-btn');
+    if(dAdd) dAdd.onclick=window.addDiagFromSettings;
+    const dClr=document.getElementById('diag-clear-added');
+    if(dClr) dClr.onclick=window.clearDiagManual;
+    ['diag-add-name','diag-add-code'].forEach(function(id){
+      const el=document.getElementById(id); if(!el) return;
+      el.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); window.addDiagFromSettings(); } };
+    });
+    const dBox=document.getElementById('diag-custom-list');
+    if(dBox) dBox.onclick=function(e){
+      const b=e.target.closest('button[data-diag-del]'); if(!b) return;
+      e.preventDefault(); window.removeDiagCustom(b.dataset.diagDel);
+    };
+  }
 function renderBackupList(){
   const el=document.getElementById('bk-list'); if(!el) return;
   const list=backupsAll();
