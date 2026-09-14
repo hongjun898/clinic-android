@@ -1,6 +1,6 @@
 {
   "name": "clinic-android",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "private": true,
   "description": "门诊管理 · Android 原生壳（Capacitor + 原生 TTS 桥接）",
   "scripts": {

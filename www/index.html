@@ -549,13 +549,14 @@ input,select,textarea{outline:none}
 .print-top-row .tr{flex:0 0 44mm}
 .print-top-row .print-info-item{min-height:0;padding:0}
 .print-info-item.red .val{color:#DC2626;font-size:13pt;letter-spacing:1px}
-/* 信息栅格：通用 3 列，.four 4 列，.dx 诊断 2:1 */
+/* 信息栅格：通用 3 列，.four 4 列，.dx 诊断整行 */
 .print-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 5mm;font-size:10.5pt}
 .print-info+.print-info{margin-top:.9mm}
 .print-info.c3a{grid-template-columns:1.5fr .8fr .9fr}    /* 姓名 / 性别 / 年龄 */
 .print-info.c3b{grid-template-columns:1fr 1fr 1.5fr}      /* 费别 / 科室 / 联系电话 */
-.print-info.c4{grid-template-columns:1.3fr .7fr .8fr 1.5fr} /* 姓名 / 性别 / 年龄 / 开具日期 */
-.print-info.dx2{grid-template-columns:1.5fr 1fr}          /* 临床诊断 / 开具日期 */
+/* 第 42 轮：处方笺取消「开具日期」（与签名格「日期」重复），姓名行恢复 3 列 */
+.print-info.c4{grid-template-columns:1.5fr .8fr .9fr}     /* 姓名 / 性别 / 年龄 */
+.print-info.dx2{grid-template-columns:1fr}                /* 临床诊断 整行 */
 .print-info.dx1{grid-template-columns:1fr}                /* 临床诊断 独占一行 */
 .print-info-item{display:flex;align-items:baseline;gap:2px;padding:.4mm 0 .2mm;min-height:0}
 .print-info-item .lab{color:#444;white-space:nowrap;font-size:9.5pt}
@@ -586,6 +587,10 @@ input,select,textarea{outline:none}
 .print-fee-total{font-size:12pt;font-weight:800;white-space:nowrap}
 .print-fee-single{display:flex;justify-content:space-between;align-items:baseline;padding:1mm 1.6mm}
 .print-fee-single .print-fee-lab{font-size:9.5pt;font-weight:700;color:#000}
+/* 第 42 轮：拆方多张时，处方笺底部汇总「本次共 N 张合计」 */
+.print-fee-group{display:flex;justify-content:space-between;align-items:baseline;margin-top:1mm;padding:.4mm 1.6mm;font-size:9pt;color:#333}
+.print-fee-group-lab{white-space:nowrap}
+.print-fee-group-val{font-weight:800;color:#1D4ED8;font-size:10.5pt;white-space:nowrap}
 .print-foot-block{border-top:1px solid #000;border-bottom:1px solid #000;margin-top:4mm;padding:1.2mm 0 1.6mm}
 .print-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm 10mm;font-size:10pt}
 .print-sign-cell{display:flex;align-items:flex-end;gap:3px;min-height:8mm}
@@ -669,7 +674,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.23 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.24 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -921,7 +926,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.23 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.24 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -5207,16 +5212,44 @@ window.saveRx=function(patientId, rxId, status){
     const chunks=[];
     for(let i=0;i<items.length;i+=limit) chunks.push(items.slice(i,i+limit));
     const total=chunks.length;
+    /* 第 42 轮：拆方后的金额合计口径重做。
+       此前：首张沿用填写的「四项费用 + 合计」，后续张 totalAmount 留空、
+             但 fees 整份复制 → 每张都显示同一笔药品费，合计也对不上。
+       现在：
+         · 每张处方的「药品费」按本张实际药品行重算（各张只算自己的药）；
+         · 「诊断费 / 检查费 / 治疗费」是就诊级别的项目，仅计入首张，避免重复收费；
+         · 每张合计 = 本张四项相加；首张若医生手动改过合计（manual），保留手动值；
+         · 用 splitGroup 串起同一次拆方，便于合计与缴费提示汇总。 */
+    const splitGroup=(total>1)?('sg'+now.toString(36)+Math.random().toString(36).slice(2,6)):'';
+    const srcFees=_snap.fees||{};
+    const srcManual=(typeof _snap.fees==='object'&&_snap.fees&&_snap.fees.manual===true);
     const created=[];
     chunks.forEach(function(part,idx){
+      const isFirst=(idx===0);
+      /* 本张药品费：按本张药品行实时算价（与处方编辑器同一套取价函数） */
+      const myDrugFee=rxDrugFeeFromItems(part).amount;
+      const myFees={ diag:isFirst?(srcFees.diag==null?'':srcFees.diag):'',
+                     exam:isFirst?(srcFees.exam==null?'':srcFees.exam):'',
+                     treat:isFirst?(srcFees.treat==null?'':srcFees.treat):'',
+                     drug:myDrugFee,
+                     manual:isFirst&&srcManual };
+      let myTotal=rxFeeSumRounded(myFees);
+      /* 首张若医生手动改过合计，沿用其手动值；未改则用本张自动合计 */
+      if(isFirst){
+        if(srcManual&&_snap.totalAmount!==''&&_snap.totalAmount!=null){
+          myTotal=Number(_snap.totalAmount);
+        } else if(_snap.totalAmount!==''&&_snap.totalAmount!=null&&total===1){
+          myTotal=Number(_snap.totalAmount);
+        }
+      }
+      const patch={ fees:myFees, totalAmount:myTotal, partTotal:total, partIndex:idx+1,
+                    splitGroup:splitGroup||null };
       let rx;
-      if(idx===0 && rxId){
+      if(isFirst && rxId){
         rx=Store.data.prescriptions.find(function(x){ return x.id===rxId; });
-        Object.assign(rx, base, { items:part, partTotal:total, partIndex:idx+1 });
+        Object.assign(rx, base, patch, { items:part });
       } else {
-        rx=Object.assign({ id:id(), code:genRxCode(), serial:genRxSerial(), visitId:null, createdAt:now, partTotal:total, partIndex:idx+1 }, base, { items:part });
-        /* 拆方后金额仅首张沿用填写值，其余留空由医生据实填写 */
-        if(idx>0) rx.totalAmount='';
+        rx=Object.assign({ id:id(), code:genRxCode(), serial:genRxSerial(), visitId:null, createdAt:now }, base, patch, { items:part });
         Store.data.prescriptions.push(rx);
       }
       if(status==='signed'){ rx.status='signed'; rx.signedAt=now; rx.dispensedAt=null; }
@@ -5227,14 +5260,26 @@ window.saveRx=function(patientId, rxId, status){
     if(status==='signed'){ ensureVisitForRxs(created, patientId, diagnosis, base.notes, now, { chiefComplaint:_snap.chiefComplaint, presentIllness:_snap.presentIllness }); }
     Store.save(); Modal.close(); renderRxList(); renderHome();
     const vb=document.querySelector('.modal-body .rx-validate'); if(vb&&vb.parentNode) vb.parentNode.removeChild(vb);
-    const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
+    /* 第 42 轮：拆方后提示里带出「本次合计」，让医生一眼看到多张处方加总后的金额 */
+    const groupTotal=created.reduce(function(s,x){ const v=Number(x.totalAmount); return s+(isFinite(v)?v:0); },0);
+    const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方（合计 ¥'+fmtMoney(Math.round(groupTotal*100)/100)+'）') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
     const syncMsg = syncedDx.length ? ('；已同步 '+syncedDx.length+' 条新诊断到诊断库') : '';
     const warnMsg = alertData.warn.length ? ('（另有 '+alertData.warn.length+' 项提示请复核）') : '';
-    toast(baseMsg+syncMsg+warnMsg, 3600);
+    toast(baseMsg+syncMsg+warnMsg, total>1?4200:3600);
     /* 第 28 轮：成功后把用户带到「门诊日志」，让"是否已同步"一眼可见 */
     if(status==='signed') setTimeout(function(){ try{ showPage('visits'); }catch(e){} }, 80);
-    /* 保存草稿 / 签名并保存后，全屏提示患者缴费（金额取自刚才的快照） */
-    showPayNotice(_snap.totalAmount, _snap.fees);
+    /* 保存草稿 / 签名并保存后，全屏提示患者缴费。
+       第 42 轮：拆方时用各张处方合计相加，而不是首张的快照金额（否则漏掉后续张的药费）。 */
+    if(total>1){
+      const gf=created.reduce(function(acc,x){
+        const f=(x.fees&&typeof x.fees==='object')?x.fees:{};
+        RX_FEE_KEYS.forEach(function(k){ const v=Number(f[k]); if(isFinite(v)) acc[k]=Math.round(((acc[k]||0)+v)*100)/100; });
+        return acc;
+      },{});
+      showPayNotice(groupTotal, gf);
+    } else {
+      showPayNotice(_snap.totalAmount, _snap.fees);
+    }
   };
   /* 签名/草稿 → 先做智能检查（签名才查），确认后按需弹签名板 → 保存 */
   const proceed=function(){
@@ -5341,15 +5386,24 @@ function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at, med){
   }
   if(!visit) visit=findVisitForRx(allIds[0], allIds[0], null);
   if(!visit){
+    /* 第 42 轮：处方路径新建门诊记录时，若医生未在处方页填写「医嘱/备注」，
+       这里按诊断自动生成「处置 / 医嘱 / 复诊日期」，与门诊页「一键生成」口径一致。
+       此前 treatment 恒为空、advice 仅来自处方备注 → 用户直接签字后门诊记录缺这两项。 */
+    let _autoT='', _autoA='', _autoFu=0;
+    try{
+      const _p=planForDx(String(dx||'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean));
+      if(_p){ _autoT=_p.treatment||''; _autoA=_p.advice||''; _autoFu=_p.fuDays||7; }
+    }catch(e){}
     visit={ id:id(), code:nextVisitCode(), patientId:pid, doctorId:'doctor-1', visitAt:now,
       chiefComplaint:cComplaint, presentIllness:pIllness, physicalExam:'',
       diagnosis:dx,
       diagnoses:String(dx||'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; }),
-      treatment:'', advice:advice||'',
+      treatment:_autoT, advice:(advice||'').trim()||_autoA,
       prescriptionId:created[0].id, prescriptionIds:allIds.slice(), signedAt:now, notes:'',
       pastHistorySnapshot:(pt&&pt.pastHistory)?pt.pastHistory.slice():[],
       allergySnapshot:(pt&&pt.allergies)?pt.allergies:'',
-      followUpAt:null, followUpNote:'', followUpDone:false };
+      followUpAt:(function(){ const d=new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate()+(_autoFu||7)); return d.getTime(); })(),
+      followUpNote:'', followUpDone:false };
     Store.data.visits.push(visit);
   } else {
     /* 已有关联记录则把本次全部处方并入（去重）；不覆盖已有病历内容，只补空白项 */
@@ -5363,7 +5417,29 @@ function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at, med){
     if((!visit.diagnoses||!visit.diagnoses.length) && dx){
       visit.diagnoses=String(dx).split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; });
     }
-    if(!visit.advice && advice) visit.advice=advice;
+    if(!String(visit.advice||'').trim() && advice) visit.advice=advice;
+    /* 第 42 轮：处方路径通常不带「处置 / 治疗意见」与「医嘱」，
+       （医生在处方页往往不填「医嘱/备注」就直接签字）
+       若门诊记录此刻这两项为空，按诊断自动生成一次 —— 否则门诊记录里
+       「按诊断自动生成处置 / 医嘱」的内容会整段丢失（用户报障）。
+       仍受「已填写则不覆盖」保护，医生写过的内容不会被冲掉。 */
+    if(!String(visit.treatment||'').trim() || !String(visit.advice||'').trim()){
+      try{
+        const plan=planForDx((visit.diagnoses&&visit.diagnoses.length)
+          ? visit.diagnoses.map(function(x){ return x.name; })
+          : String(visit.diagnosis||'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean));
+        if(plan){
+          if(!String(visit.treatment||'').trim() && plan.treatment) visit.treatment=plan.treatment;
+          if(!String(visit.advice||'').trim() && plan.advice) visit.advice=plan.advice;
+          /* 复诊日期同样为空时按建议天数补一个，与门诊页「一键生成」口径一致 */
+          if(!visit.followUpAt){
+            const fu=new Date(now); fu.setHours(0,0,0,0);
+            fu.setDate(fu.getDate()+(plan.fuDays||7));
+            visit.followUpAt=fu.getTime();
+          }
+        }
+      }catch(e){}
+    }
     /* 只在门诊记录该字段为空时回填，避免覆盖医生已填写的完整病历 */
     if(!String(visit.chiefComplaint||'').trim() && cComplaint) visit.chiefComplaint=cComplaint;
     if(!String(visit.presentIllness||'').trim() && pIllness) visit.presentIllness=pIllness;
@@ -5425,7 +5501,7 @@ function openRxPrint(rid){
       '</div>'+
       (dxSolo
         ? '<div class="print-info c4">'+
-            item('姓名',escapeHtml(p?p.name:'-'))+item('性别',escapeHtml(p?(p.gender||'-'):'-'))+item('年龄',fmtAge(p?p.birthDate:''))+item('开具日期',dateStr)+
+            item('姓名',escapeHtml(p?p.name:'-'))+item('性别',escapeHtml(p?(p.gender||'-'):'-'))+item('年龄',fmtAge(p?p.birthDate:''))+
           '</div>'+
           '<div class="print-info c3b">'+
             item('费别',escapeHtml(r.feeType||'自费'))+item('科室',escapeHtml(r.dept||'内科'))+item('联系电话',escapeHtml(p?(p.phone||'-'):'-'))+
@@ -5437,7 +5513,7 @@ function openRxPrint(rid){
           '<div class="print-info c3b">'+
             item('费别',escapeHtml(r.feeType||'自费'))+item('科室',escapeHtml(r.dept||'内科'))+item('联系电话',escapeHtml(p?(p.phone||'-'):'-'))+
           '</div>'+
-          '<div class="print-info dx2">'+item('临床诊断',dxSpan)+item('开具日期',dateStr)+'</div>'
+          '<div class="print-info dx2">'+item('临床诊断',dxSpan)+'</div>'
       )+
       '<div class="print-divider"></div>'+
       '<div class="print-rp-title">'+(tcm?'中药饮片':'Rp.')+'</div>'+
@@ -5449,9 +5525,20 @@ function openRxPrint(rid){
            老处方无 fees 字段时，仅显示单项合计，保持版面与旧版一致 */
         const f=r.fees&&typeof r.fees==='object'?r.fees:null;
         const money=function(v){ return (v===''||v==null||isNaN(Number(v)))?'—':fmtMoney(Number(v)); };
+        /* 第 42 轮：本张是拆方产生的（partTotal>1）时，附一行「本次共 N 张合计」，
+           让医生/患者一眼看到多张处方的总金额（各张金额相加，不重不漏）。 */
+        let groupLine='';
+        if(r.partTotal&&r.partTotal>1){
+          const grp=Store.data.prescriptions.filter(function(x){
+            return x.splitGroup && x.splitGroup===r.splitGroup;
+          });
+          const gTotal=(grp.length?grp:[r]).reduce(function(s,x){ const v=Number(x.totalAmount); return s+(isFinite(v)?v:0); },0);
+          groupLine='<div class="print-fee-group"><span class="print-fee-group-lab">本次共 '+r.partTotal+' 张处方，合计</span>'+
+            '<span class="print-fee-group-val">'+money(Math.round(gTotal*100)/100)+'</span></div>';
+        }
         if(!f){
           return '<div class="print-fee-block print-fee-single">'+
-            '<span class="print-fee-lab">金额合计</span><span class="print-fee-total">'+money(r.totalAmount)+'</span></div>';
+            '<span class="print-fee-lab">金额合计</span><span class="print-fee-total">'+money(r.totalAmount)+'</span></div>'+groupLine;
         }
         const items=RX_FEE_KEYS.map(function(k){
           return '<div class="print-fee-cell"><span class="print-fee-lab">'+RX_FEE_LABELS[k]+'</span>'+
@@ -5460,7 +5547,7 @@ function openRxPrint(rid){
         return '<div class="print-fee-block">'+
           '<div class="print-fee-grid">'+items+'</div>'+
           '<div class="print-fee-sum"><span class="print-fee-lab">金额合计</span><span class="print-fee-total">'+money(r.totalAmount)+'</span></div>'+
-        '</div>';
+        '</div>'+groupLine;
       })()+
       '<div class="print-foot-block">'+
         '<div class="print-sign-grid">'+
