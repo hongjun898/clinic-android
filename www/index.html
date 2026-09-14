@@ -225,13 +225,8 @@ input,select,textarea{outline:none}
 .pay-hello{font-size:20px;font-weight:800;color:#0F172A;letter-spacing:3px}
 .pay-amount{margin:12px 0 4px;font-size:clamp(46px,13vw,92px);line-height:1.05;font-weight:900;color:#DC2626;word-break:break-all}
 .pay-unit{font-size:.34em;font-weight:800;color:#0F172A}
-/* 第 41 轮：缴费提示里的四项费用构成 */
-.pay-fee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:2px auto 14px;max-width:560px}
-.pay-fee-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px}
-.pay-fee-lab{font-size:12px;color:#64748B;white-space:nowrap}
-.pay-fee-val{font-size:15px;font-weight:800;color:#0F172A;white-space:nowrap}
-.pay-fee-drug{color:var(--primary)}
-.pay-thanks{font-size:22px;font-weight:800;color:#0F172A;margin-bottom:18px;letter-spacing:3px}
+/* 第 44 轮：缴费提示取消四项费用明细格（仅保留大字号总额 + 祝您健康） */
+.pay-thanks{font-size:22px;font-weight:800;color:#0F172A;margin:18px 0;letter-spacing:3px}
 .pay-close{width:100%;height:52px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-size:18px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .pay-close:active{transform:scale(.99)}
 .pay-hint{margin-top:12px;font-size:12px;color:#94A3B8;line-height:1.5}
@@ -240,11 +235,7 @@ input,select,textarea{outline:none}
   .pay-box{max-width:1120px;padding:64px 56px 44px;border-radius:28px}
   .pay-hello{font-size:40px;letter-spacing:6px}
   .pay-amount{font-size:clamp(96px,15vw,188px);margin:24px 0 10px}
-  .pay-thanks{font-size:44px;margin-bottom:36px;letter-spacing:6px}
-  .pay-fee-grid{max-width:860px;gap:14px;margin:6px auto 26px}
-  .pay-fee-cell{padding:14px 10px;border-radius:14px}
-  .pay-fee-lab{font-size:19px}
-  .pay-fee-val{font-size:26px}
+  .pay-thanks{font-size:44px;margin:36px 0;letter-spacing:6px}
   .pay-close{height:76px;font-size:24px;border-radius:16px}
   .pay-hint{font-size:15px;margin-top:18px}
 }
@@ -390,6 +381,10 @@ input,select,textarea{outline:none}
 .rx-fee-readonly .rx-fee-val{height:38px;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:0 10px;font-size:15px;font-weight:800;color:var(--primary);background:var(--primary-soft);border:1px solid #BFDBFE;border-radius:9px}
 .rx-fee-hint{font-size:10.5px;color:var(--text-tertiary);line-height:1.25}
 .rx-fee-warn{font-size:10.5px;color:#B45309;font-weight:600;white-space:nowrap}
+/* 第 44 轮：单项「价款」计算过程（所有药品都显示，与库存提示同一行灰色小字） */
+.rx-price-hint{color:#475569}
+.rx-price-hint b{color:var(--primary);font-weight:800}
+.rx-price-miss{color:#B45309;font-weight:600}
 .rx-total-mode{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:18px}
 .rx-manual-tag{font-size:11.5px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:999px;padding:1px 9px;font-weight:600}
 .rx-auto-tag{font-size:11.5px;color:var(--text-tertiary)}
@@ -478,8 +473,13 @@ input,select,textarea{outline:none}
   .modal-foot{padding:12px 16px;gap:8px}
   .modal-foot .btn{flex:1}
   .rx-total-bar{flex-direction:column;align-items:stretch;gap:8px}
-  .rx-fee-grid{grid-template-columns:repeat(2,1fr)}
-  .rx-fee-item input,.rx-fee-readonly .rx-fee-val{height:44px;font-size:16px}
+  .rx-fee-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .rx-fee-item input,.rx-fee-readonly .rx-fee-val{height:46px;font-size:16px}
+  /* 第 44 轮：药品费自动计算，占满整行更醒目，也避免与相邻输入框挤在一起误触 */
+  .rx-fee-readonly{grid-column:1 / -1}
+  .rx-fee-readonly .rx-fee-val{justify-content:flex-start;font-size:18px}
+  .rx-fee-readonly .rx-fee-val #rx-fee-drug-shown{flex:0 0 auto}
+  .rx-fee-item label{font-size:13px;font-weight:600}
   .rx-total-inputwrap{width:100%;max-width:none;flex:0 0 auto}
   .rx-total-bar input{width:100%;text-align:left;font-size:16px}
   .rx-total-inputwrap input{width:auto;flex:1 1 auto;text-align:left}
@@ -630,6 +630,20 @@ input,select,textarea{outline:none}
   .print-sign-cell img{max-height:8mm;max-width:26mm}
   .print-tips{font-size:8.5pt}
   .print-note-line{font-size:8pt}
+  /* 第 44 轮：移动端处方笺费用栏改 2×2 栅格，避免 4 列挤在一起溢出/压字 */
+  .print-fee-block{margin-top:2mm;padding:1mm 1.2mm}
+  .print-fee-grid{grid-template-columns:1fr 1fr;gap:0}
+  .print-fee-cell{padding:.5mm 1.2mm;font-size:9.5pt}
+  .print-fee-cell:nth-child(2n){border-left:1px solid #000}
+  .print-fee-cell:nth-child(n+3){border-top:1px solid #000}
+  .print-fee-cell:nth-child(odd){border-left:none}
+  .print-fee-lab{font-size:9pt}
+  .print-fee-sum{margin-top:.4mm;padding:.5mm 1.2mm 0}
+  .print-fee-total{font-size:12.5pt}
+  .print-fee-single{padding:.8mm 1.2mm}
+  .print-fee-group{padding:.4mm 1.2mm;font-size:9pt}
+  .print-fee-group-lab{white-space:normal}
+  .print-fee-group-val{font-size:11pt}
   .rx-slip-actions .btn{flex:1 1 auto;min-width:calc(50% - 4px)}
 }
 /* 智能提示面板 */
@@ -674,7 +688,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.25 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.26 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -926,7 +940,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.25 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.26 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -4231,18 +4245,22 @@ function openRxEditor(patientId, rxId){
   /* 第 41 轮：费用块初始化。编辑已有处方时回填已存费用；
      合计是否视为「手动」沿用旧数据的标记（老数据无标记 → 若原合计与四项不符则视为手动） */
   const oldFees=(old&&old.fees)?old.fees:null;
-  window._rxFees=null;
-  if(oldFees){
-    RX_FEE_KEYS.forEach(function(k){
-      if(k==='drug') return;
-      const el=document.getElementById('rx-fee-'+k);
-      if(el && oldFees[k]!=='' && oldFees[k]!=null) el.value=String(oldFees[k]);
-    });
-    window._rxFeeManual=(oldFees.manual===true);
-  } else {
-    window._rxFeeManual=false;
-  }
+  /* 第 44 轮：这两个动作的顺序很讲究 ——
+     ① manual 标记必须在 renderRxItems() **之前**设好：它结尾会跑一次
+        syncRxTotalFromFees，此时若 manual=false，已存的手动合计会被自动值冲掉；
+     ② 已存四项费用的种子必须放在 renderRxItems() **之后**：同一个 sync 会把
+        window._rxFees 覆盖成「从输入框读到的值」，而输入框此刻还没生成 → 读成空，
+        把种子冲掉。之前「编辑旧处方费用回填不上」就是这个顺序问题。 */
+  window._rxFeeManual = oldFees ? (oldFees.manual===true) : false;
   renderRxItems();
+  if(oldFees){
+    const seed={};
+    RX_FEE_KEYS.forEach(function(k){ seed[k]=(oldFees[k]===''||oldFees[k]==null)?'':oldFees[k]; });
+    window._rxFees=seed;
+  } else {
+    window._rxFees=null;
+  }
+  renderRxFees();
   syncRxTotalFromFees(false);
   /* 老数据没有 manual 标记：若合计与四项之和明显不符，则认定为手动值，避免自动覆盖 */
   if(old && !oldFees){
@@ -4305,7 +4323,6 @@ function rxItemNote(i){
     html+='可拆零：1'+escapeHtml(mainU)+' = '+fmtNum(drugPackSize(drug))+escapeHtml(mu)+'　';
     if(it.unit===mu){
       html+='本次 '+fmtNum(qty)+escapeHtml(mu)+' → 扣库存 '+fmtNum(toMainQty(drug,qty,mu))+escapeHtml(mainU)+'　';
-      if(bb&&bb.bulkPrice!==''&&bb.bulkPrice!=null) html+='拆零价 '+fmtMoney(bb.bulkPrice)+'/'+escapeHtml(mu)+'　参考 '+fmtMoney((Number(bb.bulkPrice)||0)*qty)+'　';
     } else {
       html+='本次 '+fmtNum(qty)+escapeHtml(mainU)+'（≈'+fmtNum(fromMainQty(drug,qty,mu))+escapeHtml(mu)+'）　';
     }
@@ -4316,7 +4333,26 @@ function rxItemNote(i){
   if(split) html+='（≈'+fmtNum(fromMainQty(drug,stockMain,mu))+escapeHtml(mu)+'）';
   const need=toMainQty(drug,qty,it.unit);
   if(qty>0 && need>stockMain+1e-9) html+='　<span style="color:var(--danger);font-weight:700">⚠ 库存不足，缺 '+fmtNum(need-stockMain)+escapeHtml(mainU)+'</span>';
+  /* 第 44 轮：价格计算过程 + 参考金额改为**所有药品**都显示
+     （此前只有「可拆零 + 按最小单位发药 + 有拆零价」才显示，
+      整包装药品只看到库存，不知道药品费是怎么算出来的）。
+      单位价一律取自计价引擎 rxDrugUnitPrice → 界面与「药品费」口径必然一致。 */
+  html+=rxPriceHint(it);
   return html;
+}
+/* 单项「价款」提示：单价来源 × 数量 = 参考金额（缺价时明确写出按 0 计） */
+function rxPriceHint(it){
+  if(!it||!it.drugId) return '';
+  const qty=Number(it.qty)||0;
+  const r=rxDrugUnitPrice(it);
+  if(isNaN(r.price)){
+    return '<span class="rx-price-hint rx-price-miss">价款：'+escapeHtml(r.basis||'缺价')+'，药品费按 0 计</span>';
+  }
+  const u=escapeHtml(String(it.unit||'').trim());
+  if(!(qty>0)) return '<span class="rx-price-hint">价款：'+escapeHtml(r.basis)+' '+fmtMoney(r.price)+'/'+u+'（数量待填）</span>';
+  const amt=Math.round(r.price*qty*100)/100;
+  return '<span class="rx-price-hint">价款：'+escapeHtml(r.basis)+' '+fmtMoney(r.price)+'/'+u+
+    ' × '+fmtNum(qty)+u+' = <b>'+fmtMoney(amt)+'</b></span>';
 }
 function refreshRxNote(i){
   const el=document.getElementById('rx-note-'+i);
@@ -4993,29 +5029,54 @@ window.syncRxTotalFromFees=function(forceAuto){
   if(forceAuto) window._rxFeeManual=false;
   if(!rxFeeIsManual()){
     const t=rxFeeSumRounded(f);
-    inp.value=(t===0 && f._drugLines===0 && RX_FEE_KEYS.every(function(k){ return f[k]===''||f[k]===0; })) ? '' : String(t);
+    const auto=(t===0 && f._drugLines===0 && RX_FEE_KEYS.every(function(k){ return f[k]===''||f[k]===0; })) ? '' : String(t);
+    /* 第 44 轮：光标停在「处方金额合计」里时**一律不回写** ——
+       否则用户清空后想重打，会被旧合计值顶回去（表现就是「改不动」）；
+       显式点「恢复自动合计」时（forceAuto）例外，必须写回去。 */
+    if(forceAuto || document.activeElement!==inp) inp.value=auto;
   }
   renderRxFees();
 };
-/* 渲染四个费用输入行（在 rx-total-bar 之前） */
+/* 渲染四个费用输入行（在 rx-total-bar 之前）
+   第 44 轮：改为「首次建结构、之后只更新值」。
+   此前每次输入都 box.innerHTML=… 整体重建，正在输入的那个 <input> 会被销毁重建
+   → 焦点与光标位置丢失，第 2 个字符起就打不进去（用户报障「填写或修改困难」）。 */
 function renderRxFees(){
   const box=document.getElementById('rx-fees');
   if(!box) return;
   const f=window._rxFees||readRxFeeInputs();
   const manual=rxFeeIsManual();
-  const rows=RX_FEE_KEYS.map(function(k){
-    if(k==='drug'){
-      const miss=f._drugMissing||0;
-      const tip=miss>0?'<span class="rx-fee-warn">⚠ '+miss+' 项缺价，按 0 计</span>':'';
-      return '<div class="rx-fee-item rx-fee-readonly"><label>'+RX_FEE_LABELS[k]+'</label>'+
-        '<div class="rx-fee-val"><span id="rx-fee-drug-shown">'+fmtMoney(f.drug)+'</span>'+tip+'</div>'+
-        '<div class="rx-fee-hint">按零售价 / 拆零价 × 数量自动计算</div></div>';
-    }
-    return '<div class="rx-fee-item"><label>'+RX_FEE_LABELS[k]+'</label>'+
-      '<input id="rx-fee-'+k+'" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="'+
-      escapeHtml(f[k]===''||f[k]==null?'':String(f[k]))+'" oninput="onRxFeeInput()"></div>';
-  }).join('');
-  box.innerHTML='<div class="rx-fee-title">费用明细</div><div class="rx-fee-grid">'+rows+'</div>';
+  const initVal=function(k){ return (f[k]===''||f[k]==null)?'':String(f[k]); };
+  /* 结构不存在（或版本不符）时建一次骨架 */
+  if(!box.querySelector('.rx-fee-grid')||box.getAttribute('data-rx-fees')!=='v2'){
+    const rows=RX_FEE_KEYS.map(function(k){
+      if(k==='drug'){
+        return '<div class="rx-fee-item rx-fee-readonly"><label>'+RX_FEE_LABELS[k]+'</label>'+
+          '<div class="rx-fee-val"><span id="rx-fee-drug-shown">—</span><span class="rx-fee-warn" id="rx-fee-drug-warn" hidden></span></div>'+
+          '<div class="rx-fee-hint">按零售价 / 拆零价 × 数量自动计算</div></div>';
+      }
+      return '<div class="rx-fee-item"><label>'+RX_FEE_LABELS[k]+'</label>'+
+        '<input id="rx-fee-'+k+'" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="'+escapeHtml(initVal(k))+'" oninput="onRxFeeInput()"></div>';
+    }).join('');
+    box.innerHTML='<div class="rx-fee-title">费用明细</div><div class="rx-fee-grid">'+rows+'</div>';
+    box.setAttribute('data-rx-fees','v2');
+  }
+  /* 只更新值：正在输入的那个输入框不重建、不回写，焦点与光标位置得以保留 */
+  RX_FEE_KEYS.forEach(function(k){
+    if(k==='drug') return;
+    const el=document.getElementById('rx-fee-'+k);
+    if(!el) return;
+    const want=initVal(k);
+    if(document.activeElement!==el && el.value!==want) el.value=want;
+  });
+  const shown=document.getElementById('rx-fee-drug-shown');
+  if(shown) shown.textContent=fmtMoney(f.drug);
+  const warn=document.getElementById('rx-fee-drug-warn');
+  if(warn){
+    const miss=f._drugMissing||0;
+    if(miss>0){ warn.textContent='⚠ '+miss+' 项缺价，按 0 计'; warn.hidden=false; }
+    else { warn.textContent=''; warn.hidden=true; }
+  }
   /* 合计行的「已手动修改 / 恢复自动」提示 */
   const badge=document.getElementById('rx-total-mode');
   if(badge){
@@ -6912,20 +6973,11 @@ function buildPayNotice(amt, fees){
   closePayNotice();
   const mask=document.createElement('div');
   mask.className='pay-mask'; mask.id='pay-notice';
-  /* 第 41 轮：有四项费用明细时，在金额下方展示费用构成（药品费高亮） */
-  let feeHtml='';
-  if(fees&&typeof fees==='object'){
-    const cells=RX_FEE_KEYS.map(function(k){
-      const v=Number(fees[k]);
-      return '<div class="pay-fee-cell"><span class="pay-fee-lab">'+RX_FEE_LABELS[k]+'</span>'+
-        '<span class="pay-fee-val'+(k==='drug'?' pay-fee-drug':'')+'">'+(isFinite(v)?fmtMoney(v):'—')+'</span></div>';
-    }).join('');
-    feeHtml='<div class="pay-fee-grid">'+cells+'</div>';
-  }
+  /* 第 44 轮：取消四项费用明细格的显示（用户要求只保留大字号「本次费用」总额）。
+     参数 fees 仍保留在签名里，避免调用方改动；此处不再渲染任何明细。 */
   mask.innerHTML='<div class="pay-box">'+
     '<div class="pay-hello">'+escapeHtml(cfgText('payTitle', PAY_TEXT_DEFAULT.title))+'</div>'+
     '<div class="pay-amount">¥'+escapeHtml(amt)+'<span class="pay-unit"> 元</span></div>'+
-    feeHtml+
     '<div class="pay-thanks">'+escapeHtml(cfgText('payThanks', PAY_TEXT_DEFAULT.thanks))+'</div>'+
     '<button type="button" class="pay-close" id="pay-close-btn">我已收到</button>'+
     '<div class="pay-hint">本提示 '+Math.round(PAY_AUTO_CLOSE_MS/60000)+' 分钟后自动关闭，也可点击提示外区域立即关闭</div>'+
