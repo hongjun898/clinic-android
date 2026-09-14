@@ -15,7 +15,7 @@ name: 构建 Android APK
 # versionCode 由版本号自动推算（major*10000 + minor*100 + patch），
 # 保证每次发版都严格递增 → 手机可以覆盖升级安装。
 env:
-  APP_VERSION: '2.22.1'
+  APP_VERSION: '2.23.0'
 
 jobs:
   build:

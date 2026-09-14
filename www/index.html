@@ -225,6 +225,12 @@ input,select,textarea{outline:none}
 .pay-hello{font-size:20px;font-weight:800;color:#0F172A;letter-spacing:3px}
 .pay-amount{margin:12px 0 4px;font-size:clamp(46px,13vw,92px);line-height:1.05;font-weight:900;color:#DC2626;word-break:break-all}
 .pay-unit{font-size:.34em;font-weight:800;color:#0F172A}
+/* 第 41 轮：缴费提示里的四项费用构成 */
+.pay-fee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:2px auto 14px;max-width:560px}
+.pay-fee-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px}
+.pay-fee-lab{font-size:12px;color:#64748B;white-space:nowrap}
+.pay-fee-val{font-size:15px;font-weight:800;color:#0F172A;white-space:nowrap}
+.pay-fee-drug{color:var(--primary)}
 .pay-thanks{font-size:22px;font-weight:800;color:#0F172A;margin-bottom:18px;letter-spacing:3px}
 .pay-close{width:100%;height:52px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-size:18px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .pay-close:active{transform:scale(.99)}
@@ -235,6 +241,10 @@ input,select,textarea{outline:none}
   .pay-hello{font-size:40px;letter-spacing:6px}
   .pay-amount{font-size:clamp(96px,15vw,188px);margin:24px 0 10px}
   .pay-thanks{font-size:44px;margin-bottom:36px;letter-spacing:6px}
+  .pay-fee-grid{max-width:860px;gap:14px;margin:6px auto 26px}
+  .pay-fee-cell{padding:14px 10px;border-radius:14px}
+  .pay-fee-lab{font-size:19px}
+  .pay-fee-val{font-size:26px}
   .pay-close{height:76px;font-size:24px;border-radius:16px}
   .pay-hint{font-size:15px;margin-top:18px}
 }
@@ -369,6 +379,21 @@ input,select,textarea{outline:none}
 .rx-total-bar input::placeholder{font-size:13px;font-weight:400;color:var(--text-tertiary)}
 .rx-calc-btn{width:38px;height:38px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:0;border:none;background:transparent;border-radius:9px;font-size:18px;line-height:1;cursor:pointer;touch-action:manipulation}
 .rx-calc-btn:active{background:var(--primary-soft)}
+/* 第 41 轮：四项费用明细（诊断费 / 检查费 / 治疗费 / 药品费） */
+.rx-fees{margin-top:10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.rx-fee-title{font-size:12.5px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;letter-spacing:.3px}
+.rx-fee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rx-fee-item{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rx-fee-item label{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.rx-fee-item input{width:100%;min-width:0;height:38px;padding:0 10px;font-size:15px;font-weight:600;border:1px solid var(--border);border-radius:9px;background:#fff;text-align:right;color:var(--text-primary)}
+.rx-fee-item input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+.rx-fee-readonly .rx-fee-val{height:38px;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:0 10px;font-size:15px;font-weight:800;color:var(--primary);background:var(--primary-soft);border:1px solid #BFDBFE;border-radius:9px}
+.rx-fee-hint{font-size:10.5px;color:var(--text-tertiary);line-height:1.25}
+.rx-fee-warn{font-size:10.5px;color:#B45309;font-weight:600;white-space:nowrap}
+.rx-total-mode{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:18px}
+.rx-manual-tag{font-size:11.5px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:999px;padding:1px 9px;font-weight:600}
+.rx-auto-tag{font-size:11.5px;color:var(--text-tertiary)}
+.rx-restore-btn{font-size:11.5px;color:var(--primary);background:none;border:none;padding:2px 0;cursor:pointer;text-decoration:underline;touch-action:manipulation}
 .rx-calc-panel{margin-top:8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:10px}
 .calc-expr-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .calc-expr{flex:1;min-width:0;font-size:16px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff}
@@ -453,6 +478,8 @@ input,select,textarea{outline:none}
   .modal-foot{padding:12px 16px;gap:8px}
   .modal-foot .btn{flex:1}
   .rx-total-bar{flex-direction:column;align-items:stretch;gap:8px}
+  .rx-fee-grid{grid-template-columns:repeat(2,1fr)}
+  .rx-fee-item input,.rx-fee-readonly .rx-fee-val{height:44px;font-size:16px}
   .rx-total-inputwrap{width:100%;max-width:none;flex:0 0 auto}
   .rx-total-bar input{width:100%;text-align:left;font-size:16px}
   .rx-total-inputwrap input{width:auto;flex:1 1 auto;text-align:left}
@@ -546,6 +573,19 @@ input,select,textarea{outline:none}
 .print-bottom-empty{text-align:center;color:#999;font-size:9pt;padding:2mm 0 .8mm}
 .print-advice{font-size:9.5pt;color:#222;margin-top:.8mm;line-height:1.35;border-top:1px dashed #c4c4c4;padding-top:1.2mm}
 /* 下部：上下横线 + 2×2 签署栏 + 小字用药提示 */
+/* 第 41 轮：处方笺四项费用明细栏 */
+.print-fee-block{margin-top:2.4mm;border:1px solid #000;border-radius:1mm;padding:1mm 1.6mm}
+.print-fee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0 .5mm}
+.print-fee-cell{display:flex;justify-content:space-between;align-items:baseline;gap:3px;padding:.3mm 1mm;font-size:9pt}
+.print-fee-cell+.print-fee-cell{border-left:1px solid #000}
+.print-fee-lab{color:#333;white-space:nowrap;font-size:8.5pt}
+.print-fee-val{font-weight:700;white-space:nowrap}
+.print-fee-drug{color:#1D4ED8}
+.print-fee-sum{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid #000;margin-top:.6mm;padding:.6mm 1mm 0}
+.print-fee-sum .print-fee-lab{font-size:9.5pt;font-weight:700;color:#000}
+.print-fee-total{font-size:12pt;font-weight:800;white-space:nowrap}
+.print-fee-single{display:flex;justify-content:space-between;align-items:baseline;padding:1mm 1.6mm}
+.print-fee-single .print-fee-lab{font-size:9.5pt;font-weight:700;color:#000}
 .print-foot-block{border-top:1px solid #000;border-bottom:1px solid #000;margin-top:4mm;padding:1.2mm 0 1.6mm}
 .print-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm 10mm;font-size:10pt}
 .print-sign-cell{display:flex;align-items:flex-end;gap:3px;min-height:8mm}
@@ -629,7 +669,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.22 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.23 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -881,7 +921,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.22 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.23 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -2273,6 +2313,10 @@ const Modal={
   open:function(title,body,footer,opt){
     opt=opt||{};
     this.lock=!!opt.lock;
+    /* 第 41 轮：缴费提示（#pay-notice，z-index 300）是全屏遮罩，会盖住弹窗（z-index 100）。
+       用户刚保存处方看到缴费提示后，若马上去开处方笺/编辑器，弹窗内的按钮会被遮罩吃掉点击。
+       这里在打开任何弹窗时主动收起缴费提示 —— 用户已经进入下一步操作，提示无需继续占用屏幕。 */
+    try{ if(document.getElementById('pay-notice')) closePayNotice(); }catch(e){}
     document.getElementById('modal-title').textContent=title;
     document.getElementById('modal-body').innerHTML=body||'';
     document.getElementById('modal-foot').innerHTML=footer||'<button class="btn btn-secondary" onclick="Modal.close()">关闭</button>';
@@ -4153,13 +4197,20 @@ function openRxEditor(patientId, rxId){
     '<div id="rx-items-container"></div>'+
     '<button class="btn btn-secondary" onclick="addRxItem()" style="margin:8px 0 14px">＋ 添加药品</button>'+
     '<div id="rx-alerts"></div>'+
-    '<div class="rx-total-bar"><span class="rx-total-label">处方金额合计（可手动填写）</span>'+
-      '<div class="rx-total-inputwrap"><input id="rx-total-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="'+(old&&old.totalAmount!==''&&old.totalAmount!=null?old.totalAmount:'')+'">'+
+    '<div id="rx-fees" class="rx-fees"></div>'+
+    '<div class="rx-total-bar"><span class="rx-total-label">处方金额合计</span>'+
+      '<div class="rx-total-inputwrap"><input id="rx-total-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="'+(old&&old.totalAmount!==''&&old.totalAmount!=null?old.totalAmount:'')+'" oninput="markRxTotalManual()">'+
       '<button type="button" class="rx-calc-btn" id="rx-calc-btn" title="打开计算器" aria-label="打开计算器" onclick="openRxCalc()">🧮</button></div>'+
     '</div>'+
-    '<div class="field-hint" style="margin-top:6px">金额可直接输入算式（如 <b>12.5*3+8</b>），保存时自动计算；点 🧮 打开计算器</div>'+
-    '<div class="field-hint" style="margin-top:2px">医师签名：'+sigTip+'</div>'+
-    '<div class="field" style="margin-top:12px"><label>医嘱 / 备注</label><textarea id="rx-notes" placeholder="如：注意休息，多饮水，不适随诊">'+escapeHtml(old?old.notes||'':'')+'</textarea></div>',
+    '<div class="rx-total-mode" id="rx-total-mode"></div>'+
+    '<div class="field-hint" style="margin-top:6px">金额可直接输入算式（如 <b>12.5*3+8</b>），保存时自动计算；点 🧮 打开计算器。合计默认由四项费用相加，也可直接改写。</div>'+
+    '<div class="field-row" style="margin-top:12px">'+
+      '<div class="field"><label>主诉</label><textarea id="rx-chief" rows="2" placeholder="如：发热、咳嗽 3 天">'+escapeHtml(old?old.chiefComplaint||'':'')+'</textarea></div>'+
+      '<div class="field"><label>现病史</label><textarea id="rx-present" rows="2" placeholder="如：3 天前受凉后…">'+escapeHtml(old?old.presentIllness||'':'')+'</textarea></div>'+
+    '</div>'+
+    '<div class="field-hint" style="margin-top:-4px">主诉与现病史会带入门诊日志；体格检查、处置可在门诊日志中继续完善</div>'+
+    '<div class="field" style="margin-top:8px"><label>医嘱 / 备注</label><textarea id="rx-notes" placeholder="如：注意休息，多饮水，不适随诊">'+escapeHtml(old?old.notes||'':'')+'</textarea></div>'+
+    '<div class="field-hint" style="margin-top:2px">医师签名：'+sigTip+'</div>',
     '<button class="btn btn-secondary" onclick="Modal.close()">取消</button>'+
     '<button class="btn btn-secondary" onclick="saveRx(\''+patientId+'\',\''+(rxId||'')+'\',\'draft\')">保存草稿</button>'+
     '<button class="btn btn-primary" onclick="saveRx(\''+patientId+'\',\''+(rxId||'')+'\',\'signed\')">签名并保存</button>',{lock:true});
@@ -4172,7 +4223,28 @@ function openRxEditor(patientId, rxId){
   document.getElementById('tab-tcm').onclick=function(){ window._rxState.type='tcm'; document.getElementById('tab-tcm').classList.add('active'); document.getElementById('tab-western').classList.remove('active'); renderRxItems(); };
   const dxInit=(old?String(old.diagnosis||''):'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean);
   initTagField('tf-rxdx', diagOptions(), dxInit);
+  /* 第 41 轮：费用块初始化。编辑已有处方时回填已存费用；
+     合计是否视为「手动」沿用旧数据的标记（老数据无标记 → 若原合计与四项不符则视为手动） */
+  const oldFees=(old&&old.fees)?old.fees:null;
+  window._rxFees=null;
+  if(oldFees){
+    RX_FEE_KEYS.forEach(function(k){
+      if(k==='drug') return;
+      const el=document.getElementById('rx-fee-'+k);
+      if(el && oldFees[k]!=='' && oldFees[k]!=null) el.value=String(oldFees[k]);
+    });
+    window._rxFeeManual=(oldFees.manual===true);
+  } else {
+    window._rxFeeManual=false;
+  }
   renderRxItems();
+  syncRxTotalFromFees(false);
+  /* 老数据没有 manual 标记：若合计与四项之和明显不符，则认定为手动值，避免自动覆盖 */
+  if(old && !oldFees){
+    const auto=rxFeeSumRounded(window._rxFees||readRxFeeInputs());
+    const cur=(old.totalAmount===''||old.totalAmount==null)?NaN:Number(old.totalAmount);
+    if(isFinite(cur) && Math.abs(cur-auto)>0.005){ window._rxFeeManual=true; renderRxFees(); }
+  }
   setTimeout(refreshRxAlerts,60);
 }
 window.addRxItem=function(){ window._rxState.items.push(newRxItem()); renderRxItems(); };
@@ -4318,6 +4390,8 @@ function renderRxItems(){
     el.oninput=function(){ window._rxState.items[idx][key]=el.value; };
   }
   clearTimeout(refreshRxAlerts._t); refreshRxAlerts._t=setTimeout(refreshRxAlerts,60);
+  /* 药品项变化 → 药品费与合计联动（保留手动合计：forceAuto=false） */
+  syncRxTotalFromFees(false);
 }
 function collectRxItems(){
   return window._rxState.items.map(function(it,i){
@@ -4465,7 +4539,12 @@ function refreshRxAlerts(){
   const mb=document.getElementById('modal-body');
   if(!mb) return;
   ['input','change','click'].forEach(function(ev){
-    mb.addEventListener(ev, function(){ clearTimeout(refreshRxAlerts._t); refreshRxAlerts._t=setTimeout(refreshRxAlerts,150); });
+    mb.addEventListener(ev, function(e){
+      clearTimeout(refreshRxAlerts._t); refreshRxAlerts._t=setTimeout(refreshRxAlerts,150);
+      /* 费用输入框变化 → 重算合计；其它改动 → 仅刷新药品费显示（不动手动合计） */
+      const t=e&&e.target, isFee=t&&t.id&&/^rx-fee-/.test(t.id);
+      if(isFee){ onRxFeeInput(); } else { syncRxTotalFromFees(false); }
+    });
   });
 })();
 /* ============================================================
@@ -4821,6 +4900,139 @@ function rxTotalValue(){
   return isNaN(v)?'':Math.round(v*100)/100;
 }
 window.rxTotalValue=rxTotalValue;
+
+/* ============================================================
+   第 41 轮：处方四项费用（诊断费 / 检查费 / 治疗费 / 药品费）
+   ------------------------------------------------------------
+   - 药品费（drug）：由药品库零售价 / 拆零价 × 数量即时算出，只读
+   - 其余三项：手动填写（医生据实填写），可留空
+   - 合计（total）：默认 = 四项相加；医生手动改过后以手动值为准，
+     并在界面上标出「已手动修改」，提供一键恢复自动合计
+   数据形态：rx.fees = { diag, exam, treat, drug, manual }
+     manual=true 表示合计被人工覆盖（此时 rx.totalAmount 为准）
+   ============================================================ */
+const RX_FEE_KEYS=['diag','exam','treat','drug'];
+const RX_FEE_LABELS={ diag:'诊断费', exam:'检查费', treat:'治疗费', drug:'药品费' };
+/* 单条药品取价：优先「按发药单位对应的价」
+   - 以拆零最小单位发药 → 用拆零价（bulkPrice）；缺失则回落到零售价 ÷ 包装比
+   - 以整包装发药        → 用零售价（retailPrice） */
+function rxDrugUnitPrice(it){
+  const d=it&&it.drugId?Store.data.drugs.find(function(x){ return x.id===it.drugId; }):null;
+  if(!d) return { price:NaN, basis:'', batch:null };
+  const batches=(d.batches||[]).filter(function(b){ return b.qty>0; });
+  const b=it.batchId?batches.find(function(x){ return x.id===it.batchId; }):null;
+  const batch=b||batches[0]||(d.batches||[])[0]||null;
+  if(!batch) return { price:NaN, basis:'无批次', batch:null };
+  const unit=String(it.unit||'').trim();
+  const mu=drugMinUnit(d);
+  const splitting=!!unit && !!mu && unit===mu && canSplit(d);
+  const ps=drugPackSize(d);
+  const num=function(v){ const n=Number(v); return (v===''||v==null||isNaN(n))?NaN:n; };
+  const retail=num(batch.retailPrice), bulk=num(batch.bulkPrice);
+  if(splitting){
+    if(!isNaN(bulk)) return { price:bulk, basis:'拆零价', batch:batch };
+    if(!isNaN(retail) && ps>1) return { price:Math.round(retail/ps*10000)/10000, basis:'零售价÷'+ps, batch:batch };
+    return { price:NaN, basis:'缺拆零价', batch:batch };
+  }
+  if(!isNaN(retail)) return { price:retail, basis:'零售价', batch:batch };
+  if(!isNaN(bulk) && ps>1) return { price:Math.round(bulk*ps*10000)/10000, basis:'拆零价×'+ps, batch:batch };
+  return { price:NaN, basis:'缺零售价', batch:batch };
+}
+function rxDrugLineAmount(it){
+  const r=rxDrugUnitPrice(it);
+  const qty=Number(it&&it.qty);
+  if(isNaN(r.price)||!isFinite(qty)||qty<=0) return { amount:NaN, missing:true, basis:r.basis, unit:r.price };
+  return { amount:Math.round(r.price*qty*100)/100, missing:false, basis:r.basis, unit:r.price };
+}
+/* 药品费：全部药品行相加；缺价的按 0 计入并回报数量（用于显式提示） */
+function rxDrugFeeFromItems(items){
+  let sum=0, missing=0, lines=0;
+  (items||[]).forEach(function(it){
+    if(!it||(!it.drugId&&!it.name)) return;
+    lines++;
+    const r=rxDrugLineAmount(it);
+    if(r.missing){ missing++; return; }
+    sum+=r.amount;
+  });
+  return { amount:Math.round(sum*100)/100, missing:missing, lines:lines };
+}
+/* 读取界面上四项费用输入框（诊断/检查/治疗）+ 实时药品费 */
+function readRxFeeInputs(){
+  const out={};
+  RX_FEE_KEYS.forEach(function(k){
+    if(k==='drug') return;
+    const el=document.getElementById('rx-fee-'+k);
+    const raw=el?String(el.value||'').trim():'';
+    if(raw===''){ out[k]=''; return; }
+    const v=evalAmountExpr(raw);
+    out[k]=isNaN(v)?'':Math.round(v*100)/100;
+  });
+  const d=rxDrugFeeFromItems(window._rxState?window._rxState.items:[]);
+  out.drug=d.amount;
+  out._drugMissing=d.missing;
+  out._drugLines=d.lines;
+  return out;
+}
+function sumRxFees(f){
+  return RX_FEE_KEYS.reduce(function(s,k){ const v=Number(f&&f[k]); return s+(isFinite(v)?v:0); },0);
+}
+function rxFeeSumRounded(f){ return Math.round(sumRxFees(f)*100)/100; }
+/* 合计的手动覆盖标记 */
+function rxFeeIsManual(){ return !!(window._rxFeeManual); }
+/* 把「手动合计」的金额写回输入框（无手动值则写自动合计） */
+window.syncRxTotalFromFees=function(forceAuto){
+  const inp=document.getElementById('rx-total-input');
+  if(!inp) return;
+  const f=readRxFeeInputs();
+  window._rxFees=f;
+  if(forceAuto) window._rxFeeManual=false;
+  if(!rxFeeIsManual()){
+    const t=rxFeeSumRounded(f);
+    inp.value=(t===0 && f._drugLines===0 && RX_FEE_KEYS.every(function(k){ return f[k]===''||f[k]===0; })) ? '' : String(t);
+  }
+  renderRxFees();
+};
+/* 渲染四个费用输入行（在 rx-total-bar 之前） */
+function renderRxFees(){
+  const box=document.getElementById('rx-fees');
+  if(!box) return;
+  const f=window._rxFees||readRxFeeInputs();
+  const manual=rxFeeIsManual();
+  const rows=RX_FEE_KEYS.map(function(k){
+    if(k==='drug'){
+      const miss=f._drugMissing||0;
+      const tip=miss>0?'<span class="rx-fee-warn">⚠ '+miss+' 项缺价，按 0 计</span>':'';
+      return '<div class="rx-fee-item rx-fee-readonly"><label>'+RX_FEE_LABELS[k]+'</label>'+
+        '<div class="rx-fee-val"><span id="rx-fee-drug-shown">'+fmtMoney(f.drug)+'</span>'+tip+'</div>'+
+        '<div class="rx-fee-hint">按零售价 / 拆零价 × 数量自动计算</div></div>';
+    }
+    return '<div class="rx-fee-item"><label>'+RX_FEE_LABELS[k]+'</label>'+
+      '<input id="rx-fee-'+k+'" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" value="'+
+      escapeHtml(f[k]===''||f[k]==null?'':String(f[k]))+'" oninput="onRxFeeInput()"></div>';
+  }).join('');
+  box.innerHTML='<div class="rx-fee-title">费用明细</div><div class="rx-fee-grid">'+rows+'</div>';
+  /* 合计行的「已手动修改 / 恢复自动」提示 */
+  const badge=document.getElementById('rx-total-mode');
+  if(badge){
+    badge.innerHTML=manual
+      ? '<span class="rx-manual-tag">已手动修改</span><button type="button" class="rx-restore-btn" onclick="restoreRxTotalAuto()">恢复自动合计</button>'
+      : '<span class="rx-auto-tag">自动合计 = 四项相加</span>';
+  }
+}
+window.onRxFeeInput=function(){ syncRxTotalFromFees(false); };
+window.restoreRxTotalAuto=function(){ syncRxTotalFromFees(true); };
+/* 合计输入框被人工编辑 → 标记为手动 */
+window.markRxTotalManual=function(){
+  const inp=document.getElementById('rx-total-input');
+  if(!inp) return;
+  const f=readRxFeeInputs(); window._rxFees=f;
+  const auto=rxFeeSumRounded(f);
+  const cur=String(inp.value||'').trim();
+  const curv=cur===''?NaN:evalAmountExpr(cur);
+  window._rxFeeManual=!(cur==='' || (!isNaN(curv) && Math.abs(curv-auto)<0.005));
+  renderRxFees();
+};
+
 window.applyRxTotalExpr=function(){
   const el=document.getElementById('rx-total-input');
   if(!el) return;
@@ -4961,7 +5173,11 @@ window.saveRx=function(patientId, rxId, status){
     dept:(((document.getElementById('rx-dept')||{}).value)||'').trim(),
     notes:(((document.getElementById('rx-notes')||{}).value)||'').trim(),
     rxType:window._rxState.type,
-    totalAmount:rxTotalValue()
+    totalAmount:rxTotalValue(),
+    /* 第 41 轮：病历字段（带入门诊记录）+ 四项费用明细 */
+    chiefComplaint:(((document.getElementById('rx-chief')||{}).value)||'').trim(),
+    presentIllness:(((document.getElementById('rx-present')||{}).value)||'').trim(),
+    fees:Object.assign({}, (window._rxFees||readRxFeeInputs()), { manual:rxFeeIsManual() })
   };
   const doSave=function(){
     const now=Date.now();
@@ -4977,7 +5193,9 @@ window.saveRx=function(patientId, rxId, status){
     }catch(e){ syncedDx=[]; }
     const base={ diagnosis:diagnosis, category:_snap.category, feeType:_snap.feeType,
       dept:_snap.dept, notes:_snap.notes,
-      rxType:_snap.rxType, patientId:patientId, totalAmount:_snap.totalAmount };
+      rxType:_snap.rxType, patientId:patientId, totalAmount:_snap.totalAmount,
+      chiefComplaint:_snap.chiefComplaint, presentIllness:_snap.presentIllness,
+      fees:_snap.fees };
     /* 规格回写药品库 */
     items.forEach(function(it){
       const drug=Store.data.drugs.find(function(d){ return d.id===it.drugId; });
@@ -5006,7 +5224,7 @@ window.saveRx=function(patientId, rxId, status){
       created.push(rx);
     });
     /* 关联门诊记录：本次开具的全部处方（含自动拆方产生的多张）都挂到同一条就诊记录 */
-    if(status==='signed'){ ensureVisitForRxs(created, patientId, diagnosis, base.notes, now); }
+    if(status==='signed'){ ensureVisitForRxs(created, patientId, diagnosis, base.notes, now, { chiefComplaint:_snap.chiefComplaint, presentIllness:_snap.presentIllness }); }
     Store.save(); Modal.close(); renderRxList(); renderHome();
     const vb=document.querySelector('.modal-body .rx-validate'); if(vb&&vb.parentNode) vb.parentNode.removeChild(vb);
     const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
@@ -5016,7 +5234,7 @@ window.saveRx=function(patientId, rxId, status){
     /* 第 28 轮：成功后把用户带到「门诊日志」，让"是否已同步"一眼可见 */
     if(status==='signed') setTimeout(function(){ try{ showPage('visits'); }catch(e){} }, 80);
     /* 保存草稿 / 签名并保存后，全屏提示患者缴费（金额取自刚才的快照） */
-    showPayNotice(_snap.totalAmount);
+    showPayNotice(_snap.totalAmount, _snap.fees);
   };
   /* 签名/草稿 → 先做智能检查（签名才查），确认后按需弹签名板 → 保存 */
   const proceed=function(){
@@ -5104,7 +5322,7 @@ function findVisitForRx(rid, probe, src, visits){
      · 幂等：同一张处方反复签名/调剂不会重复建记录；
      · 双向关联：处方的 visitId 与就诊的 prescriptionIds 互指；
      · 只补空字段：已有病历内容（主诉/现病史/查体/处置）不被处方路径覆盖。 */
-function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at){
+function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at, med){
   const created=(rxList||[]).filter(Boolean);
   if(!created.length) return null;
   const allIds=created.map(function(x){ return x.id; });
@@ -5112,6 +5330,10 @@ function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at){
   const pid=patientId||(created[0]&&created[0].patientId)||'';
   const dx=diagnosis!=null?diagnosis:(created[0].diagnosis||'');
   const pt=Store.data.patients.find(function(x){ return x.id===pid; });
+  /* 第 41 轮：处方编辑器新增「主诉 / 现病史」字段，签名时一并带入门诊记录 */
+  const medSrc=med||created[0]||{};
+  const cComplaint=medSrc.chiefComplaint!=null?String(medSrc.chiefComplaint).trim():(created[0]&&created[0].chiefComplaint?String(created[0].chiefComplaint).trim():'');
+  const pIllness=medSrc.presentIllness!=null?String(medSrc.presentIllness).trim():(created[0]&&created[0].presentIllness?String(created[0].presentIllness).trim():'');
   /* 匹配规则同 findVisitForRx：先按处方自带 visitId，再按 prescriptionId(s) 包含关系 */
   let visit=null;
   for(let i=0;i<created.length&&!visit;i++){
@@ -5120,7 +5342,7 @@ function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at){
   if(!visit) visit=findVisitForRx(allIds[0], allIds[0], null);
   if(!visit){
     visit={ id:id(), code:nextVisitCode(), patientId:pid, doctorId:'doctor-1', visitAt:now,
-      chiefComplaint:'', presentIllness:'', physicalExam:'',
+      chiefComplaint:cComplaint, presentIllness:pIllness, physicalExam:'',
       diagnosis:dx,
       diagnoses:String(dx||'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; }),
       treatment:'', advice:advice||'',
@@ -5142,6 +5364,9 @@ function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at){
       visit.diagnoses=String(dx).split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; });
     }
     if(!visit.advice && advice) visit.advice=advice;
+    /* 只在门诊记录该字段为空时回填，避免覆盖医生已填写的完整病历 */
+    if(!String(visit.chiefComplaint||'').trim() && cComplaint) visit.chiefComplaint=cComplaint;
+    if(!String(visit.presentIllness||'').trim() && pIllness) visit.presentIllness=pIllness;
     if(!visit.signedAt) visit.signedAt=now;
   }
   created.forEach(function(x){ x.visitId=visit.id; });
@@ -5219,10 +5444,28 @@ function openRxPrint(rid){
       '<ul class="print-drug-list">'+drugList+'</ul>'+
       '<div class="print-bottom-empty">（以下空白）</div>'+
       (r.notes?'<div class="print-advice"><b>医嘱：</b>'+escapeHtml(r.notes)+'</div>':'')+
+      (function(){
+        /* 第 41 轮：处方笺展示四项费用明细（诊断费 / 检查费 / 治疗费 / 药品费）
+           老处方无 fees 字段时，仅显示单项合计，保持版面与旧版一致 */
+        const f=r.fees&&typeof r.fees==='object'?r.fees:null;
+        const money=function(v){ return (v===''||v==null||isNaN(Number(v)))?'—':fmtMoney(Number(v)); };
+        if(!f){
+          return '<div class="print-fee-block print-fee-single">'+
+            '<span class="print-fee-lab">金额合计</span><span class="print-fee-total">'+money(r.totalAmount)+'</span></div>';
+        }
+        const items=RX_FEE_KEYS.map(function(k){
+          return '<div class="print-fee-cell"><span class="print-fee-lab">'+RX_FEE_LABELS[k]+'</span>'+
+            '<span class="print-fee-val'+(k==='drug'?' print-fee-drug':'')+'">'+money(f[k])+'</span></div>';
+        }).join('');
+        return '<div class="print-fee-block">'+
+          '<div class="print-fee-grid">'+items+'</div>'+
+          '<div class="print-fee-sum"><span class="print-fee-lab">金额合计</span><span class="print-fee-total">'+money(r.totalAmount)+'</span></div>'+
+        '</div>';
+      })()+
       '<div class="print-foot-block">'+
         '<div class="print-sign-grid">'+
-          cell('医师',sigInner)+cell('金额',(r.totalAmount===''||r.totalAmount==null)?'':'<b>'+fmtMoney(r.totalAmount)+'</b>')+
-          cell('药师','')+cell('发药', r.dispenserSign?'<img src="'+r.dispenserSign+'">':(r.status==='dispensed'?'<span class="print-doc-name">'+escapeHtml(doctorName())+'</span>':''))+
+          cell('医师',sigInner)+cell('药师','')+
+          cell('发药', r.dispenserSign?'<img src="'+r.dispenserSign+'">':(r.status==='dispensed'?'<span class="print-doc-name">'+escapeHtml(doctorName())+'</span>':''))+cell('日期', dateStr)+
         '</div>'+
       '</div>'+
       '<div class="print-tips"><ol>'+
@@ -5235,6 +5478,9 @@ function openRxPrint(rid){
   document.getElementById('modal-foot').innerHTML='';
   document.getElementById('modal').classList.remove('locked');
   var _lt=document.getElementById('modal-lock-tip'); if(_lt&&_lt.parentNode) _lt.parentNode.removeChild(_lt);
+  /* 第 41 轮：处方笺直接操作 #modal（不经 Modal.open），单独收起缴费提示，
+     否则 z-index 300 的 #pay-notice 会盖住 z-index 100 的弹窗、点不动「签名 / 调剂发药」。 */
+  try{ if(document.getElementById('pay-notice')) closePayNotice(); }catch(e){}
   document.getElementById('modal').classList.add('show');
 }
 window.openRxSlip=function(rid){ openRxPrint(rid); };
@@ -6575,13 +6821,24 @@ function closePayNotice(){
   }catch(e){}
   try{ syncMaybeApplyPending(); }catch(e){}
 }
-function buildPayNotice(amt){
+function buildPayNotice(amt, fees){
   closePayNotice();
   const mask=document.createElement('div');
   mask.className='pay-mask'; mask.id='pay-notice';
+  /* 第 41 轮：有四项费用明细时，在金额下方展示费用构成（药品费高亮） */
+  let feeHtml='';
+  if(fees&&typeof fees==='object'){
+    const cells=RX_FEE_KEYS.map(function(k){
+      const v=Number(fees[k]);
+      return '<div class="pay-fee-cell"><span class="pay-fee-lab">'+RX_FEE_LABELS[k]+'</span>'+
+        '<span class="pay-fee-val'+(k==='drug'?' pay-fee-drug':'')+'">'+(isFinite(v)?('¥'+fmtMoney(v)):'—')+'</span></div>';
+    }).join('');
+    feeHtml='<div class="pay-fee-grid">'+cells+'</div>';
+  }
   mask.innerHTML='<div class="pay-box">'+
     '<div class="pay-hello">'+escapeHtml(cfgText('payTitle', PAY_TEXT_DEFAULT.title))+'</div>'+
     '<div class="pay-amount">¥'+escapeHtml(amt)+'<span class="pay-unit"> 元</span></div>'+
+    feeHtml+
     '<div class="pay-thanks">'+escapeHtml(cfgText('payThanks', PAY_TEXT_DEFAULT.thanks))+'</div>'+
     '<button type="button" class="pay-close" id="pay-close-btn">我已收到</button>'+
     '<div class="pay-hint">本提示 '+Math.round(PAY_AUTO_CLOSE_MS/60000)+' 分钟后自动关闭，也可点击提示外区域立即关闭</div>'+
@@ -6592,11 +6849,11 @@ function buildPayNotice(amt){
   _payTimer=setTimeout(closePayNotice, PAY_AUTO_CLOSE_MS);
   return mask;
 }
-window.showPayNotice=function(rawAmount){
+window.showPayNotice=function(rawAmount, fees){
   if(!cfgFlag('payNotice', true)) return;
   const amt=payAmountText(rawAmount);
   if(!amt) return;
-  buildPayNotice(amt);
+  buildPayNotice(amt, fees);
   speakPay(paySpeechText(rawAmount));
 };
 window.payNoticeFrom=function(el){ if(!el) return; showPayNotice(el.getAttribute('data-amt')); };
