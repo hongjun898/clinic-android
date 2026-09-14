@@ -10,6 +10,13 @@ name: 构建 Android APK
   push:
     branches: [ main, master ]
 
+# 应用版本号（唯一改动处）：升版本时只改这里。
+# 会写进 android/app/build.gradle 的 versionCode / versionName。
+# versionCode 由版本号自动推算（major*10000 + minor*100 + patch），
+# 保证每次发版都严格递增 → 手机可以覆盖升级安装。
+env:
+  APP_VERSION: '2.22.0'
+
 jobs:
   build:
     name: 构建 APK
@@ -38,6 +45,17 @@ jobs:
 
       - name: 生成 Android 平台工程
         run: npx cap add android
+
+      - name: 写入应用版本号（versionCode / versionName）
+        run: |
+          set -e
+          # Capacitor 模板把 build.gradle 里的 versionCode 硬编码为 1，
+          # 而 Android 只允许「versionCode 严格更大」的包覆盖安装。
+          # 不改这一步 → 手机永远装不上新版（提示「应用未安装」）。
+          # package.json 的 version 对 Android 升级判定没有任何作用。
+          python3 tools/patch-version.py android/app/build.gradle "$APP_VERSION"
+          echo "--- 写入结果核对（硬断言）---"
+          grep -n "versionCode\|versionName" android/app/build.gradle
 
       - name: 注入原生 TTS 源码
         run: |
@@ -138,9 +156,13 @@ jobs:
           cp "$APK_SRC" "门诊管理-Android.apk"
           ls -lh "门诊管理-Android.apk"
 
-      - name: 校验产物（应用名 + 图标 + 权限）
+      - name: 校验产物（应用名 + 图标 + 权限 + 版本号）
         run: |
           set -e
+          # 依据 APP_VERSION 推算期望的 versionCode（与 tools/patch-version.py 同一算法）
+          EXPECT_CODE=$(python3 -c "import re,sys; m=re.match(r'^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$', '$APP_VERSION');
+          print(int(m.group(1))*10000 + int(m.group(2) or 0)*100 + int(m.group(3) or 0))")
+          echo "期望 versionCode = $EXPECT_CODE（来自 APP_VERSION=$APP_VERSION）"
           # aapt2 路径：用 glob 取最后一个（build-tools 版本号最大者）
           AAPT=""
           for d in "$ANDROID_HOME"/build-tools/*/aapt2; do
@@ -190,7 +212,25 @@ jobs:
           grep -aq "icon=" /tmp/badging.txt \
             || { echo "错误：badging 里没有 icon 信息"; exit 1; }
 
-          echo "产物校验通过（应用名 / 图标 / 权限 全部就位）"
+          echo "--- 5) 版本号（硬断言：必须来自 APP_VERSION，且 versionCode > 1）---"
+          # versionCode 是**整数属性**，不在字符串池里，grep/unzip 都查不到，
+          # 必须用 aapt2 dump badging 读出来的 versionCode 行。
+          grep -a "versionCode\|versionName" /tmp/badging.txt || true
+          BC=$(grep -a "versionCode" /tmp/badging.txt | head -1 | grep -o "versionCode='[0-9]*'" | grep -o "[0-9]*" || true)
+          echo "读到的 versionCode = [$BC]（期望 $EXPECT_CODE）"
+          if [ -z "$BC" ]; then echo "错误：badging 里读不到 versionCode"; exit 1; fi
+          # 必须等于期望值：防止 patch-version 步骤被跳过 / 写错位置
+          if [ "$BC" != "$EXPECT_CODE" ]; then
+            echo "错误：versionCode=$BC，期望 $EXPECT_CODE（版本补丁未生效）"; exit 1
+          fi
+          # 且必须 > 1：Capacitor 模板默认就是 1，等于 1 说明根本没改
+          if [ "$BC" -le 1 ]; then
+            echo "错误：versionCode=$BC（<=1），手机无法覆盖安装升级"; exit 1
+          fi
+          grep -aq "versionName='$APP_VERSION'" /tmp/badging.txt \
+            || { echo "错误：versionName 不是 $APP_VERSION"; exit 1; }
+
+          echo "产物校验通过（应用名 / 图标 / 权限 / 版本号 全部就位）"
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4

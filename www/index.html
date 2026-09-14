@@ -629,7 +629,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.21 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.22 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -817,7 +817,7 @@ input,select,textarea{outline:none}
               <div class="field-row" data-page-node-id="CoI9YbZvJNSfgenP5Y38i7">
                 <div class="field" data-page-node-id="54wHdakKEst7mwkFYYuHFe"><label data-page-node-id="hd3IQJVVt60KFbSEI4LF7j">备份频次</label><select id="bk-freq" data-page-node-id="XuK72C28ffC8YvS2VgJnQ2"><option value="daily" data-page-node-id="DTvGEEhsV6aI9mrfzI2b38">每天</option><option value="weekly" data-page-node-id="JIX1uzmaPapU65LgcGMvzk">每周</option><option value="monthly" data-page-node-id="rvUzLnQfH3dYlEEQ8PiHj2">每月</option></select></div>
                 <div class="field" data-page-node-id="GYiEPtlGArO9nGtdhuwlNZ"><label data-page-node-id="Im6IiG1KDHN25Dikp1h7Mi">备份时间</label><input type="time" id="bk-time" data-page-node-id="atjJPVX8GUY4xcU3vLsCwW"></div>
-                <div class="field" data-page-node-id="ww6FNMKSZ9m2EWQsbtVlQV"><label data-page-node-id="4mHuf6mvc9XfozhYhzrARZ">保留份数</label><input type="number" id="bk-keep" min="1" max="20" data-page-node-id="H7BB92uVBKfwERtUHCmzSR"></div>
+                <div class="field" data-page-node-id="ww6FNMKSZ9m2EWQsbtVlQV"><label data-page-node-id="4mHuf6mvc9XfozhYhzrARZ">保留份数</label><input type="number" id="bk-keep" min="1" max="20" data-page-node-id="H7BB92uVBKfwERtUHCmzSR"><div class="field-hint">本机与 NAS 磁盘上的备份都按这个份数保留，超出自动删最旧的</div></div>
               </div>
               <div class="field-hint" id="bk-next" data-page-node-id="X7x7jfyafJkLojne3JSSvO">下次备份：计算中…</div>
               <div class="field"><label>备份文件存放位置</label>
@@ -835,7 +835,10 @@ input,select,textarea{outline:none}
                 </div>
                 <div class="field-hint" id="sync-server-hint"></div>
               </div>
-              <button class="btn btn-secondary" id="bk-now" style="margin-top:8px" data-page-node-id="v7Nxzcpj7ap0JE8PL7E6Sj">⟳ 立即备份</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button class="btn btn-secondary" id="bk-now" data-page-node-id="v7Nxzcpj7ap0JE8PL7E6Sj">⟳ 立即备份</button>
+                <button class="btn btn-secondary" id="bk-prune">🧹 立即清理旧备份</button>
+              </div>
             </div>
           </div>
           <div class="dash-col narrow" data-page-node-id="S2U3ippHDwal00rZfH9CeX">
@@ -878,7 +881,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.21 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.22 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -3002,9 +3005,14 @@ function renderBackupStatus(){
           ' · 上次 '+(sc.lastAuto?formatDateTime(sc.lastAuto):'尚未执行')+
           ' · 下次 '+(sc.nextDue?formatDateTime(sc.nextDue):'—')+
           (sc.dir?('（'+sc.dir+'）'):'')+(sc.lastError?('　⚠ '+sc.lastError):'');
+        /* 第 40 轮：磁盘备份同样遵守「保留份数」，超出自动删最旧 */
+        if(typeof sc.autoCount==='number' && sc.dir){
+          sl.textContent+='　· 磁盘 '+sc.autoCount+' 份（保留 '+bk.keep+' 份，超出自动删旧）';
+        }
         return;
       }
-      if(j.files&&j.files.length) sl.textContent='服务端磁盘最新备份：'+formatDateTime(j.files[0].mtime)+'（共 '+j.files.length+' 个文件 · '+j.dir+'）';
+      if(j.files&&j.files.length) sl.textContent='服务端磁盘最新备份：'+formatDateTime(j.files[0].mtime)+
+        '（共 '+j.files.length+' 个文件 · 保留 '+bk.keep+' 份，超出自动删旧 · '+j.dir+'）';
     }).catch(function(){});
   }
 }
@@ -5779,6 +5787,30 @@ function bindSettings(){
     renderBackupList(); renderBackupStatus();
   };
   document.getElementById('bk-refresh').onclick=function(){ renderBackupList(); renderBackupStatus(); };
+  /* 第 40 轮：立即按「保留份数」清理 —— 本机快照 + NAS 磁盘备份一起清 */
+  const bkPrune=document.getElementById('bk-prune');
+  if(bkPrune) bkPrune.onclick=function(){
+    const keep=Math.max(1, Number(Store.data.cfg.backup.keep)||5);
+    const localCount=backupsAll().length;
+    if(!confirm('确认清理旧备份？\n\n将保留最新的 '+keep+' 份，其余（本机快照与 NAS 磁盘上的备份文件）会被删除，此操作不可恢复。\n\n当前本机快照 '+localCount+' 份。')) return;
+    /* 1) 本机 localStorage 快照 */
+    let list=backupsAll(), localRemoved=0;
+    while(list.length>keep){ list.pop(); localRemoved++; }
+    try{ backupsSave(list); }catch(e){ toast('本机清理失败：'+((e&&e.message)||e)); }
+    /* 2) NAS 磁盘备份文件 */
+    const doneLocal=function(){
+      if(!syncEnabled()){ toast('已清理 '+localRemoved+' 份本机备份', 3200); renderBackupList(); renderBackupStatus(); return; }
+      fetch('/api/backup-prune',{method:'POST'}).then(function(r){ return r.json(); }).then(function(j){
+        if(j&&j.ok){
+          toast('清理完成：本机删除 '+localRemoved+' 份，磁盘删除 '+(j.removed?j.removed.length:0)+' 个文件（保留 '+j.keep+' 份，现有 '+j.after+' 个）', 4200);
+        }else{
+          toast('本机已清理 '+localRemoved+' 份；磁盘清理失败：'+((j&&j.error)||'服务端返回异常'), 4200);
+        }
+        renderBackupList(); renderBackupStatus();
+      }).catch(function(e){ toast('本机已清理 '+localRemoved+' 份；磁盘清理失败：'+((e&&e.message)||e), 4200); renderBackupList(); renderBackupStatus(); });
+    };
+    doneLocal();
+  };
   const dcR=document.getElementById('dc-refresh'); if(dcR) dcR.onclick=renderDataCheck;
   const dcF=document.getElementById('dc-fix'); if(dcF) dcF.onclick=window.dcFix;
   renderDataCheck();
