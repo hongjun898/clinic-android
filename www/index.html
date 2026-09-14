@@ -5006,32 +5006,7 @@ window.saveRx=function(patientId, rxId, status){
       created.push(rx);
     });
     /* 关联门诊记录：本次开具的全部处方（含自动拆方产生的多张）都挂到同一条就诊记录 */
-    if(status==='signed'){
-      const allIds=created.map(function(x){ return x.id; });
-      const pt=Store.data.patients.find(function(x){ return x.id===patientId; });
-      /* 就诊记录匹配（第 26 轮修复）：见 findVisitForRx() */
-      const editSrc=rxId?Store.data.prescriptions.find(function(x){ return x.id===rxId; }):null;
-      let visit=findVisitForRx(rxId, created[0].id, editSrc);
-      if(!visit){
-        visit={ id:id(), code:nextVisitCode(), patientId:patientId, doctorId:'doctor-1', visitAt:now,
-          chiefComplaint:'', presentIllness:'', physicalExam:'',
-          diagnosis:diagnosis,
-          diagnoses:diagnosis.split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; }),
-          treatment:'', advice:base.notes,
-          prescriptionId:created[0].id, prescriptionIds:allIds.slice(), signedAt:now, notes:'',
-          pastHistorySnapshot:(pt&&pt.pastHistory)?pt.pastHistory.slice():[],
-          allergySnapshot:(pt&&pt.allergies)?pt.allergies:'',
-          followUpAt:null, followUpNote:'', followUpDone:false };
-        Store.data.visits.push(visit);
-      } else {
-        /* 已有关联记录则把本次全部处方并入（去重） */
-        const set={};
-        (visit.prescriptionIds||[]).forEach(function(x){ set[x]=1; });
-        allIds.forEach(function(x){ set[x]=1; });
-        visit.prescriptionIds=Object.keys(set);
-      }
-      created.forEach(function(x){ x.visitId=visit.id; });
-    }
+    if(status==='signed'){ ensureVisitForRxs(created, patientId, diagnosis, base.notes, now); }
     Store.save(); Modal.close(); renderRxList(); renderHome();
     const vb=document.querySelector('.modal-body .rx-validate'); if(vb&&vb.parentNode) vb.parentNode.removeChild(vb);
     const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
@@ -5064,7 +5039,10 @@ window.saveRx=function(patientId, rxId, status){
 window.signRx=function(rid){
   const r=Store.data.prescriptions.find(function(x){ return x.id===rid; }); if(!r) return;
   if(!Store.data.cfg.signature){ openSignaturePad(function(){ signRx(rid); }); return; }
-  r.status='signed'; r.signedAt=Date.now(); r.dispensedAt=null; Store.save(); Modal.close(); renderRxList(); toast('已签名，等待药师调剂');
+  r.status='signed'; r.signedAt=Date.now(); r.dispensedAt=null;
+  /* 第 40 轮：签名即落门诊记录（此前只改状态，门诊日志一直是空的） */
+  ensureVisitForRxs([r], r.patientId, r.diagnosis, r.notes, r.signedAt);
+  Store.save(); Modal.close(); renderRxList(); renderHome(); toast('已签名，等待药师调剂');
 };
 window.dispenseRx=function(rid){
   const r=Store.data.prescriptions.find(function(x){ return x.id===rid; }); if(!r) return;
@@ -5074,6 +5052,9 @@ window.dispenseRx=function(rid){
     r.status='dispensed'; r.dispensedAt=Date.now();
     r.dispenserSign=Store.data.cfg.signature||'';
     r.dispenserName=doctorName();
+    /* 第 40 轮：兜底再补一次门诊记录 —— 兼容历史数据（旧版本签名的处方不会建记录），
+       也覆盖「处方被直接标为已发药」的情况；函数幂等，重复调用不会多建。 */
+    ensureVisitForRxs([r], r.patientId, r.diagnosis, r.notes, r.signedAt||Date.now());
     Store.save(); Modal.close(); renderRxList(); renderHome();
     toast(r.dispenserSign?'调剂完成，已加盖发药签名':'调剂完成');
   };
@@ -5114,6 +5095,57 @@ function findVisitForRx(rid, probe, src, visits){
     if(x.prescriptionId===p) return true;
     return Array.isArray(x.prescriptionIds)&&x.prescriptionIds.indexOf(p)>=0;
   })||null;
+}
+/* 第 40 轮：把「处方已签名」这件事统一落成门诊记录。
+   背景：处方变成 signed 原本有三条入口 —— saveRx('signed')、signRx()、dispenseRx()，
+   但只有第一条建就诊记录，于是「存草稿 → 处方笺点签名 → 调剂发药」这条最常见的流程
+   一路推进到已发药，门诊日志却始终是空的（用户报障）。
+   现在三条入口统一调用本函数，做到：
+     · 幂等：同一张处方反复签名/调剂不会重复建记录；
+     · 双向关联：处方的 visitId 与就诊的 prescriptionIds 互指；
+     · 只补空字段：已有病历内容（主诉/现病史/查体/处置）不被处方路径覆盖。 */
+function ensureVisitForRxs(rxList, patientId, diagnosis, advice, at){
+  const created=(rxList||[]).filter(Boolean);
+  if(!created.length) return null;
+  const allIds=created.map(function(x){ return x.id; });
+  const now=at||Date.now();
+  const pid=patientId||(created[0]&&created[0].patientId)||'';
+  const dx=diagnosis!=null?diagnosis:(created[0].diagnosis||'');
+  const pt=Store.data.patients.find(function(x){ return x.id===pid; });
+  /* 匹配规则同 findVisitForRx：先按处方自带 visitId，再按 prescriptionId(s) 包含关系 */
+  let visit=null;
+  for(let i=0;i<created.length&&!visit;i++){
+    visit=findVisitForRx(created[i].id, created[i].id, created[i]);
+  }
+  if(!visit) visit=findVisitForRx(allIds[0], allIds[0], null);
+  if(!visit){
+    visit={ id:id(), code:nextVisitCode(), patientId:pid, doctorId:'doctor-1', visitAt:now,
+      chiefComplaint:'', presentIllness:'', physicalExam:'',
+      diagnosis:dx,
+      diagnoses:String(dx||'').split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; }),
+      treatment:'', advice:advice||'',
+      prescriptionId:created[0].id, prescriptionIds:allIds.slice(), signedAt:now, notes:'',
+      pastHistorySnapshot:(pt&&pt.pastHistory)?pt.pastHistory.slice():[],
+      allergySnapshot:(pt&&pt.allergies)?pt.allergies:'',
+      followUpAt:null, followUpNote:'', followUpDone:false };
+    Store.data.visits.push(visit);
+  } else {
+    /* 已有关联记录则把本次全部处方并入（去重）；不覆盖已有病历内容，只补空白项 */
+    const set={};
+    (visit.prescriptionIds||[]).forEach(function(x){ set[x]=1; });
+    if(visit.prescriptionId) set[visit.prescriptionId]=1;
+    allIds.forEach(function(x){ set[x]=1; });
+    visit.prescriptionIds=Object.keys(set);
+    if(!visit.prescriptionId) visit.prescriptionId=created[0].id;
+    if(!visit.diagnosis && dx) visit.diagnosis=dx;
+    if((!visit.diagnoses||!visit.diagnoses.length) && dx){
+      visit.diagnoses=String(dx).split(/[、,，;；]/).map(function(s){ return s.trim(); }).filter(Boolean).map(function(n){ return {name:n, icd:diagICD(n)}; });
+    }
+    if(!visit.advice && advice) visit.advice=advice;
+    if(!visit.signedAt) visit.signedAt=now;
+  }
+  created.forEach(function(x){ x.visitId=visit.id; });
+  return visit;
 }
 window.printRx=function(rid){ openRxPrint(rid); };
 
