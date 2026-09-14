@@ -674,7 +674,7 @@ input,select,textarea{outline:none}
     </nav>
     <div class="side-footer" data-page-node-id="eiltv8kFz3wz82Uiocv5cD">
       <div class="user-mini" data-page-node-id="ztrfeH1eXDxVXZFUAXnwGD"><div class="user-avatar" id="side-doctor-avatar" data-page-node-id="orU13ULlmFYGDvWYQFBUgz">张</div><div class="user-info" data-page-node-id="TYtCN4JE6mtuiOYoOaE82a"><div class="user-name" id="side-doctor" data-page-node-id="Km1Lshdg8KRnDa4jlYAtZf">张医生</div><div class="user-role" id="side-doctor-title" data-page-node-id="abx6Wam0UW5lfjomedg1qs">主治医师</div></div></div>
-      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.24 正式版 · 本地私有部署</div>
+      <div class="version" data-page-node-id="cjEHVoiqBa4Lssr2NxwBAu">v2.25 正式版 · 本地私有部署</div>
     </div>
   </aside>
   <main class="main" data-page-node-id="QryRQU1l6CS9PjJvJV3OfN">
@@ -926,7 +926,7 @@ input,select,textarea{outline:none}
               <input type="file" id="restore-file" accept=".json" style="display:none" data-page-node-id="PpEkky61vmOl6OzxUz9Cbc">
             </div>
             <div class="section-card" style="text-align:center;color:var(--text-tertiary);font-size:13px" data-page-node-id="Dbly8qm6PKdC6KU0zW8eve">
-              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.24 正式版</div>
+              <div style="font-weight:600;color:var(--text);margin-bottom:6px" data-page-node-id="t8D8i9Bx38CJR22uL1VOSy">诊所管理系统 · v2.25 正式版</div>
               含拆零开方、门诊日志、复诊随访；后续可迁移为 Node.js + SQLite + Docker 私有部署
             </div>
           </div>
@@ -4305,7 +4305,7 @@ function rxItemNote(i){
     html+='可拆零：1'+escapeHtml(mainU)+' = '+fmtNum(drugPackSize(drug))+escapeHtml(mu)+'　';
     if(it.unit===mu){
       html+='本次 '+fmtNum(qty)+escapeHtml(mu)+' → 扣库存 '+fmtNum(toMainQty(drug,qty,mu))+escapeHtml(mainU)+'　';
-      if(bb&&bb.bulkPrice!==''&&bb.bulkPrice!=null) html+='拆零价 ¥'+fmtMoney(bb.bulkPrice)+'/'+escapeHtml(mu)+'　参考 ¥'+fmtMoney((Number(bb.bulkPrice)||0)*qty)+'　';
+      if(bb&&bb.bulkPrice!==''&&bb.bulkPrice!=null) html+='拆零价 '+fmtMoney(bb.bulkPrice)+'/'+escapeHtml(mu)+'　参考 '+fmtMoney((Number(bb.bulkPrice)||0)*qty)+'　';
     } else {
       html+='本次 '+fmtNum(qty)+escapeHtml(mainU)+'（≈'+fmtNum(fromMainQty(drug,qty,mu))+escapeHtml(mu)+'）　';
     }
@@ -5262,7 +5262,7 @@ window.saveRx=function(patientId, rxId, status){
     const vb=document.querySelector('.modal-body .rx-validate'); if(vb&&vb.parentNode) vb.parentNode.removeChild(vb);
     /* 第 42 轮：拆方后提示里带出「本次合计」，让医生一眼看到多张处方加总后的金额 */
     const groupTotal=created.reduce(function(s,x){ const v=Number(x.totalAmount); return s+(isFinite(v)?v:0); },0);
-    const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方（合计 ¥'+fmtMoney(Math.round(groupTotal*100)/100)+'）') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
+    const baseMsg = total>1 ? ('共 '+items.length+' 味药，已自动拆分为 '+total+' 张处方（合计 '+fmtMoney(Math.round(groupTotal*100)/100)+'）') : (status==='signed'?'处方已签名保存（待调剂）':'草稿已保存');
     const syncMsg = syncedDx.length ? ('；已同步 '+syncedDx.length+' 条新诊断到诊断库') : '';
     const warnMsg = alertData.warn.length ? ('（另有 '+alertData.warn.length+' 项提示请复核）') : '';
     toast(baseMsg+syncMsg+warnMsg, total>1?4200:3600);
@@ -6918,7 +6918,7 @@ function buildPayNotice(amt, fees){
     const cells=RX_FEE_KEYS.map(function(k){
       const v=Number(fees[k]);
       return '<div class="pay-fee-cell"><span class="pay-fee-lab">'+RX_FEE_LABELS[k]+'</span>'+
-        '<span class="pay-fee-val'+(k==='drug'?' pay-fee-drug':'')+'">'+(isFinite(v)?('¥'+fmtMoney(v)):'—')+'</span></div>';
+        '<span class="pay-fee-val'+(k==='drug'?' pay-fee-drug':'')+'">'+(isFinite(v)?fmtMoney(v):'—')+'</span></div>';
     }).join('');
     feeHtml='<div class="pay-fee-grid">'+cells+'</div>';
   }
